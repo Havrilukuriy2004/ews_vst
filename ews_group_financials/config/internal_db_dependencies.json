@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "purpose": "External runtime dependencies required to connect this package to internal EWS databases.",
+  "python_optional_packages": [
+    {
+      "name": "pyodbc",
+      "minimum_version": "5.0.0",
+      "used_for": "Read-only ClientProfile SQL Server extraction via finrep.getReportFormInfo / getReportFormInfoSQL",
+      "required_when": "live_clientprofile_sqlserver=true"
+    },
+    {
+      "name": "oracledb",
+      "minimum_version": "2.0.0",
+      "used_for": "Read-only Oracle EWS / credit-contract queries",
+      "required_when": "live_oracle_ews=true"
+    },
+    {
+      "name": "openpyxl",
+      "minimum_version": "3.1.0",
+      "used_for": "Optional local XLSX import/export only; CSV flow does not require it",
+      "required_when": "xlsx_import_export=true"
+    }
+  ],
+  "native_drivers": [
+    {
+      "name": "Microsoft ODBC Driver for SQL Server",
+      "accepted_versions": ["17", "18"],
+      "used_for": "ClientProfile SQL Server connectivity through pyodbc"
+    },
+    {
+      "name": "Oracle Instant Client",
+      "accepted_versions": ["19", "21", "23"],
+      "used_for": "Oracle connectivity when the selected Python driver requires native client libraries"
+    }
+  ],
+  "internal_databases": [
+    {
+      "logical_name": "clientprofile_sql_server",
+      "engine": "SQL Server",
+      "access": "read-only",
+      "env_vars": [
+        "CLIENTPROFILE_SQL_SERVER",
+        "CLIENTPROFILE_SQL_DATABASE",
+        "CLIENTPROFILE_SQL_DRIVER",
+        "CLIENTPROFILE_SQL_TRUSTED_CONNECTION",
+        "CLIENTPROFILE_SQL_USER",
+        "CLIENTPROFILE_SQL_PASSWORD",
+        "CLIENTPROFILE_SQL_ENCRYPT",
+        "CLIENTPROFILE_SQL_TRUST_SERVER_CERTIFICATE"
+      ],
+      "required_objects": [
+        "finrep.getReportFormInfo",
+        "finrep.getReportFormInfoSQL",
+        "finrep.reportForm1",
+        "finrep.reportForm1m2m",
+        "finrep.reportForm1ms2ms",
+        "finrep.reportForm2",
+        "finrep.reportForm3Direct",
+        "finrep.reportForm3Undirect",
+        "finrep.v_CollectReport",
+        "finrep.v_CollectReport_3_33"
+      ],
+      "allowed_operations": ["SELECT", "EXEC finrep.getReportFormInfo", "EXEC finrep.getReportFormInfoSQL"],
+      "forbidden_operations": ["INSERT", "UPDATE", "DELETE", "MERGE", "DROP", "TRUNCATE", "CREATE_DOC", "UPDATE_DOC", "DELETE_DOC"]
+    },
+    {
+      "logical_name": "oracle_ews",
+      "engine": "Oracle",
+      "access": "read-only",
+      "env_vars": ["ORACLE_DSN", "ORACLE_USER", "ORACLE_PASSWORD"],
+      "required_objects": [
+        "EWS credit-contract source views/tables approved by the owner",
+        "Client drill-down source views approved by the owner"
+      ],
+      "allowed_operations": ["SELECT"],
+      "forbidden_operations": ["INSERT", "UPDATE", "DELETE", "MERGE", "DROP", "TRUNCATE", "CREATE_DOC", "UPDATE_DOC", "DELETE_DOC"]
+    }
+  ],
+  "network_dependencies": [
+    {
+      "logical_name": "clientprofile_sql_server",
+      "default_port": 1433,
+      "direction": "application_host -> SQL Server"
+    },
+    {
+      "logical_name": "oracle_ews",
+      "default_port": 1521,
+      "direction": "application_host -> Oracle listener"
+    }
+  ]
+}

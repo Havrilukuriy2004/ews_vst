@@ -1,0 +1,3 @@
+# No mandatory third-party dependencies for the CSV ETL and dashboard.
+# For live internal database connectivity install requirements-db.txt on the approved deployment host:
+#   python -m pip install -r requirements-db.txt

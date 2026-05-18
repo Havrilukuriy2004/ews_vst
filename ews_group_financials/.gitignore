@@ -1,0 +1,13 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Generated EWS outputs (created by scripts/run_group_financials.sh)
+output/*.csv
+output/*.json
+output/*.html
+
+# Local secrets / private connection config
+.env
+*.env.local
+python/*.private.env

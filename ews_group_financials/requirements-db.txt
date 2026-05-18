@@ -1,0 +1,7 @@
+# Optional dependencies for live internal database connectivity.
+# Install only on the deployment host that has approved network access to internal DBs.
+pyodbc>=5.0.0
+oracledb>=2.0.0
+
+# Optional workbook import/export support; not required for CSV ETL or dashboard.
+openpyxl>=3.1.0
