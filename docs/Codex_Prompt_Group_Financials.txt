@@ -1,0 +1,36 @@
+Build the EWS group financials module using all provided sources.
+
+Core requirement:
+- Collect financial statements for two or more companies.
+- Apply year-specific group matching.
+- Aggregate financial statement line codes 1000...2650 by SUM at group level.
+- Save company-level and group-level financials in Excel.
+- Calculate EWS-ready indicators: Revenue trend, EBITDA margin, Net Debt/EBITDA, ICRm, Financial Cycle.
+- Integrate the group financials into the client drill-down of the EWS dashboard.
+
+Inputs:
+- templates/01_Group_Matching.csv
+- templates/02_Raw_Wide.csv
+- data/field_codes_catalog.csv
+- data/metric_mapping.csv
+- sql/*.sql
+- python/build_group_financials.py
+- vba/ProcessReports_GroupAggregation.bas
+- extracted_sources/*.txt
+
+Mandatory rules:
+1. EDRPOU must be string.
+2. Matching is by matching_year + edrpou.
+3. Only included companies with inclusion_flag=1 are aggregated.
+4. Numeric financial lines use SUM.
+5. KVED fields use main company / highest revenue rule, not SUM.
+6. Staff count is SUM.
+7. Metadata is ETL metadata.
+8. All source DBs are read-only.
+9. No SR_BANK CREATE_DOC/UPDATE_DOC/DELETE_DOC calls.
+
+Deliverables:
+- Filled company and group financials CSV outputs.
+- Normalized long staging tables.
+- SQL views for group indicators.
+- Validation report.

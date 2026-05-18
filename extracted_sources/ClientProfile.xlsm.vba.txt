@@ -1,0 +1,1644 @@
+olevba 0.60.2 on Python 3.13.5 - http://decalage.info/python/oletools
+===============================================================================
+FILE: /mnt/data/ClientProfile.xlsm
+Type: OpenXML
+WARNING  For now, VBA stomping cannot be detected for files in memory
+-------------------------------------------------------------------------------
+VBA MACRO ЦяКнига.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/ЦяКнига'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Private Sub Workbook_Open()
+    Call ShowFilterForm
+End Sub
+
+-------------------------------------------------------------------------------
+VBA MACRO Module1.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Sub ShowFilterForm()
+    
+'    With FilterForm
+'        .cbReportForm.Clear
+'        .cbYear.Clear
+'        .cbQr.Clear
+'    End With
+    
+'    With FilterForm.cbReportForm
+'        If .ListCount = 0 Then
+'            .AddItem "Form1"
+'            .AddItem "Form1m2m"
+'            .AddItem "Form1ms2ms"
+'            .AddItem "Form2"
+'            .AddItem "Form3Direct"
+'            .AddItem "Form3Undirect"
+'        End If
+'    End With
+
+'    With FilterForm.cbQr
+'        If .ListCount = 0 Then
+'            .AddItem "1 кв."
+'            .AddItem "2 кв."
+'            .AddItem "3 кв."
+'            .AddItem "4 кв."
+'        End If
+'    End With
+
+'    With FilterForm.cbYear
+'        If .ListCount = 0 Then
+'            .AddItem "2021"
+'            .AddItem "2022"
+'            .AddItem "2023"
+'            .AddItem "2024"
+'            .AddItem "2025"
+'            .AddItem "2026"
+'            .AddItem "2027"
+'            .AddItem "2028"
+'        End If
+'    End With
+
+    Call FilterForm.Show
+    
+End Sub
+
+Sub AddNewSheet(ByVal pSheetName As String, ByRef newSheet As Worksheet)
+
+    Dim ws As Worksheet
+    Dim sheetExists As Boolean
+    Dim newSheetName As String
+    Dim cnt As Integer
+
+    sheetExists = True
+    cnt = 0
+    newSheetName = pSheetName
+    Do While sheetExists
+        For Each ws In ThisWorkbook.Sheets
+            If ws.Name = newSheetName Then
+                sheetExists = True
+                Exit For
+            End If
+            sheetExists = False
+        Next ws
+        
+        If sheetExists Then
+            cnt = cnt + 1
+            newSheetName = pSheetName + "_" + Trim(Str(cnt))
+        End If
+    Loop
+    
+    Set newSheet = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    newSheet.Name = newSheetName
+    'ws.Cells.ClearContents
+    'ws.Cells.ClearFormats
+    
+End Sub
+
+Sub GetDataBtnClick()
+
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim j As Long
+
+    If FilterForm.cbReportForm.ListIndex = -1 Then
+        MsgBox "Треба вибрати тип форми", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.cbYear.ListIndex = -1 Then
+        MsgBox "Треба вибрати рік", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.cbQr.ListIndex = -1 Then
+        MsgBox "Треба вибрати квартал", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.tbOKPO.Text = "" Then
+        MsgBox "Треба вказати список ОКПО через кому    ", vbExclamation
+        Exit Sub
+    End If
+    
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;" & _
+              "Data Source=" & DB_SERVER & ";" & _
+              "Initial Catalog=" & DB_NAME & ";" & _
+              "Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Set cmd = CreateObject("ADODB.Command")
+    Set cmd.ActiveConnection = cn
+    cmd.CommandText = "[finrep].[getReportFormInfo]"
+    cmd.CommandType = adCmdStoredProc
+    
+    'EXEC [finrep].[getReportFormInfo] @reportForm = 2, @year = 2025, @qr = 1, @edrpou =  '42164147,40365742,43314719,24326663'
+    
+    cmd.Parameters.Append cmd.CreateParameter("@reportForm", adInteger, adParamInput, , FilterForm.cbReportForm.ListIndex + 1)
+    cmd.Parameters.Append cmd.CreateParameter("@year", adInteger, adParamInput, , FilterForm.cbYear.Value)
+    cmd.Parameters.Append cmd.CreateParameter("@qr", adInteger, adParamInput, , FilterForm.cbQr.ListIndex + 1)
+    cmd.Parameters.Append cmd.CreateParameter("@edrpou", adVarWChar, adParamInput, -1, FilterForm.tbOKPO.Value)
+    
+    Set rs = cmd.Execute
+    
+    If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+        If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+            If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                MsgBox "Збережена процедура не повернула жодних даних.", vbInformation
+            Else
+
+                Call AddNewSheet(FilterForm.cbReportForm.Value, ws)
+                '    ws.Cells.ClearContents
+                ' ws.Cells(1, 1).Value = FilterForm.cbReportForm.Value + " за " + FilterForm.cbQr.Value + " " + FilterForm.cbYear.Value + " року."
+                
+                With ActiveSheet.Cells.Font
+                    .Name = "Calibri"
+                    .Size = 9
+                    .Strikethrough = False
+                    .Superscript = False
+                    .Subscript = False
+                    .OutlineFont = False
+                    .Shadow = False
+                    .Underline = xlUnderlineStyleNone
+                    .ThemeColor = xlThemeColorLight1
+                    .TintAndShade = 0
+                    .ThemeFont = xlThemeFontMinor
+                End With
+
+                ' --- Запис назв колонок ---
+                For i = 0 To rs.Fields.Count - 1
+                    ws.Cells(1, i + 1).Value = rs.Fields(i).Name
+                Next i
+            
+                ws.Range(ws.Cells(1, 1), ws.Cells(1, rs.Fields.Count)).Select
+                Selection.Font.Bold = True
+                With Selection.Interior
+                    .Pattern = xlSolid
+                    .PatternColorIndex = xlAutomatic
+                    .ThemeColor = xlThemeColorAccent1
+                    .TintAndShade = 0.599993896298105
+                    .PatternTintAndShade = 0
+                End With
+                
+                ' --- Запис даних ---
+                ws.Range("A2").CopyFromRecordset rs
+                
+                Cells.EntireColumn.AutoFit
+            
+            ws.UsedRange.Columns.AutoFit
+            ws.Cells(1, 1).Select
+            
+            'MsgBox "Дані успішно завантажено!", vbInformation
+                
+            End If
+        Else
+            MsgBox "Recordset не був відкритий після виконання збереженої процедури. Перевірте збережену процедуру та параметри.", vbExclamation
+        End If
+    Else
+        MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури. Можливо, процедура не повертає результат.", vbExclamation
+    End If
+    
+Exit Sub
+
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description, vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set rs = Nothing
+    Set cmd = Nothing
+    Set cn = Nothing
+
+End Sub
+
+
+Sub DeleteAllSheetsExceptMenu()
+
+    Dim ws As Worksheet
+    Dim sheetToDelete As Worksheet
+    Dim confirmMsg As String
+
+    Application.DisplayAlerts = False
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets("Main")
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        MsgBox "Аркуш з назвою 'Main' не знайдно, операцію скасовано.", vbExclamation
+        Application.DisplayAlerts = True
+        Exit Sub
+    End If
+
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name <> "Main" Then
+            Set sheetToDelete = ws
+            sheetToDelete.Delete
+        End If
+    Next ws
+
+    Application.DisplayAlerts = True
+
+End Sub
+
+
+Sub GetDataBtnClickSQL()
+
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim j As Long
+    Dim forms(7) As String
+    Dim selForms(7) As Boolean
+    
+    forms(0) = "Form1"
+    forms(1) = "Form1m2m"
+    forms(2) = "Form1ms2ms"
+    forms(3) = "Form2"
+    forms(4) = "Form3Direct"
+    forms(5) = "Form3Undirect"
+    forms(6) = "CollectReport"
+    forms(7) = "CollectReport3"
+    
+    If FilterForm.cbReportForm1.Value = 0 _
+        And FilterForm.cbReportForm1m2m.Value = 0 _
+        And FilterForm.cbReportForm1ms2ms.Value = 0 _
+        And FilterForm.cbReportForm2.Value = 0 _
+        And FilterForm.cbReportForm3Direct.Value = 0 _
+        And FilterForm.cbReportForm3Undirect.Value = 0 _
+        And FilterForm.cbCollectReport.Value = 0 _
+        And FilterForm.cbCollectReport_3.Value = 0 _
+    Then
+        MsgBox "Треба вибрати хочаб одну форму", vbExclamation
+        Exit Sub
+    End If
+    
+    selForms(0) = FilterForm.cbReportForm1.Value
+    selForms(1) = FilterForm.cbReportForm1m2m.Value
+    selForms(2) = FilterForm.cbReportForm1ms2ms.Value
+    selForms(3) = FilterForm.cbReportForm2.Value
+    selForms(4) = FilterForm.cbReportForm3Direct.Value
+    selForms(5) = FilterForm.cbReportForm3Undirect.Value
+    selForms(6) = FilterForm.cbCollectReport.Value
+    selForms(7) = FilterForm.cbCollectReport_3.Value
+    
+    If FilterForm.tbSQL.Text = "" Then
+        MsgBox "Треба вказати умови вивантаження ", vbExclamation
+        Exit Sub
+    End If
+    
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;" & _
+              "Data Source=" & DB_SERVER & ";" & _
+              "Initial Catalog=" & DB_NAME & ";" & _
+              "Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Dim f As Integer
+    
+    For f = 0 To 7
+    
+        If selForms(f) = True Then
+        
+            Set cmd = CreateObject("ADODB.Command")
+            Set cmd.ActiveConnection = cn
+            cmd.CommandText = "[finrep].[getReportFormInfoSQL]"
+            cmd.CommandType = adCmdStoredProc
+        
+            cmd.Parameters.Append cmd.CreateParameter("@reportForm", adInteger, adParamInput, , f + 1)
+            cmd.Parameters.Append cmd.CreateParameter("@tSQL", adVarWChar, adParamInput, -1, FilterForm.tbSQL.Value)
+        
+            'EXEC [finrep].[getReportFormInfoSQL] @reportForm = 2, @tSQL =  '[year] = 2025 AND [Month] IN (1,2,3) AND [Edrpou] IN  (42164147,40365742,43314719,24326663)'
+        
+            Set rs = cmd.Execute
+        
+            If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+                If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+                    If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                        MsgBox "Збережена процедура не повернула жодних даних для форми " + forms(f) + ".", vbInformation
+                    Else
+    
+                'If FilterFormSQL.cbReportForm1.Value = 1 Then
+                '    Call AddNewSheet("ReportForm1", ws)
+                'End If
+                        Call AddNewSheet(forms(f), ws)
+        
+                    '    ws.Cells.ClearContents
+                    ' ws.Cells(1, 1).Value = FilterForm.cbReportForm.Value + " за " + FilterForm.cbQr.Value + " " + FilterForm.cbYear.Value + " року."
+                    
+                        With ActiveSheet.Cells.Font
+                            .Name = "Calibri"
+                            .Size = 9
+                            .Strikethrough = False
+                            .Superscript = False
+                            .Subscript = False
+                            .OutlineFont = False
+                            .Shadow = False
+                            .Underline = xlUnderlineStyleNone
+                            .ThemeColor = xlThemeColorLight1
+                            .TintAndShade = 0
+                            .ThemeFont = xlThemeFontMinor
+                        End With
+    
+                    ' --- Запис назв колонок ---
+                    'Dim fld As ADODB.Field
+                    'For Each fld In rs.Fields
+                    '    Debug.Print "????? ???????: " & fld.Name & ", ???: " & fld.Type
+                    'Next
+                        For i = 0 To rs.Fields.Count - 1
+                            ws.Cells(1, i + 1).Value = rs.Fields(i).Name '& " (" & GetDataTypeName(rs.Fields(i).Type) & ")"
+                        Next i
+                
+                        ws.Range(ws.Cells(1, 1), ws.Cells(1, rs.Fields.Count)).Select
+                        Selection.Font.Bold = True
+                        With Selection.Interior
+                            .Pattern = xlSolid
+                            .PatternColorIndex = xlAutomatic
+                            .ThemeColor = xlThemeColorAccent1
+                            .TintAndShade = 0.599993896298105
+                            .PatternTintAndShade = 0
+                        End With
+                    
+                    ' --- Запис даних ---
+                        ws.Range("A2").CopyFromRecordset rs
+                    
+                        Cells.EntireColumn.AutoFit
+                
+                        ws.UsedRange.Columns.AutoFit
+                        ws.Cells(1, 1).Select
+                
+                        'MsgBox "Дані успішно завантажено!", vbInformation
+                    
+                    End If
+                Else
+                    MsgBox "Recordset не був відкритий після виконання збереженої процедури для форми " + forms(f) + ". Перевірте збережену процедуру та параметри.", vbExclamation
+                    Exit Sub
+                End If
+            Else
+                MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури для форми " + forms(f) + ". Можливо, процедура не повертає результат.", vbExclamation
+                Exit Sub
+            End If
+        End If
+            
+        Set rs = Nothing
+        Set cmd = Nothing
+    Next
+    
+    MsgBox "Завантаження завершено.", vbInformation
+
+Exit Sub
+    
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description & " для форми " + forms(f) + ".", vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set cn = Nothing
+
+End Sub
+
+Public Function GetDataTypeName(dataType As ADODB.DataTypeEnum) As String
+    Select Case dataType
+        Case adEmpty
+            GetDataTypeName = "Empty"
+        Case adTinyInt
+            GetDataTypeName = "TinyInt"
+        Case adSmallInt
+            GetDataTypeName = "SmallInt"
+        Case adInteger
+            GetDataTypeName = "Integer"
+        Case adBigInt
+            GetDataTypeName = "BigInt"
+        Case adUnsignedTinyInt
+            GetDataTypeName = "UnsignedTinyInt"
+        Case adUnsignedSmallInt
+            GetDataTypeName = "UnsignedSmallInt"
+        Case adUnsignedInt
+            GetDataTypeName = "UnsignedInt"
+        Case adUnsignedBigInt
+            GetDataTypeName = "UnsignedBigInt"
+        Case adSingle
+            GetDataTypeName = "Single"
+        Case adDouble
+            GetDataTypeName = "Double"
+        Case adCurrency
+            GetDataTypeName = "Currency"
+        Case adDecimal
+            GetDataTypeName = "Decimal"
+        Case adNumeric
+            GetDataTypeName = "Numeric"
+        Case adBoolean
+            GetDataTypeName = "Boolean"
+        Case adError
+            GetDataTypeName = "Error"
+        Case adUserDefined
+            GetDataTypeName = "UserDefined"
+        Case adVariant
+            GetDataTypeName = "Variant"
+        Case adGUID
+            GetDataTypeName = "GUID"
+        Case adDate
+            GetDataTypeName = "Date"
+        Case adDBDate
+            GetDataTypeName = "DBDate"
+        Case adDBTime
+            GetDataTypeName = "DBTime"
+        Case adDBTimeStamp
+            GetDataTypeName = "DBTimeStamp"
+        Case adChar
+            GetDataTypeName = "Char"
+        Case adWChar
+            GetDataTypeName = "WChar"
+        Case adBSTR
+            GetDataTypeName = "BSTR"
+        Case adLongVarChar
+            GetDataTypeName = "LongVarChar"
+        Case adLongVarWChar
+            GetDataTypeName = "LongVarWChar"
+        Case adVarChar
+            GetDataTypeName = "VarChar"
+        Case adVarWChar
+            GetDataTypeName = "VarWChar"
+        Case adIDispatch
+            GetDataTypeName = "IDispatch"
+        Case adIUnknown
+            GetDataTypeName = "IUnknown"
+        Case adBinary
+            GetDataTypeName = "Binary"
+        Case adVarBinary
+            GetDataTypeName = "VarBinary"
+        Case adLongVarBinary
+            GetDataTypeName = "LongVarBinary"
+        Case adChapter
+            GetDataTypeName = "Chapter"
+        Case adFileTime
+            GetDataTypeName = "FileTime"
+        Case adPropVariant
+            GetDataTypeName = "PropVariant"
+        Case adArray
+            GetDataTypeName = "Array"
+        Case Else
+            GetDataTypeName = "Unknown"
+    End Select
+End Function
+
+Sub ExportFields()
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim forms(7) As String
+    Dim nameTabs(7) As String
+    Dim ws As Worksheet
+    Dim sheetExists As Boolean
+    
+    forms(0) = "Form1"
+    forms(1) = "Form1m2m"
+    forms(2) = "Form1ms2ms"
+    forms(3) = "Form2"
+    forms(4) = "Form3Direct"
+    forms(5) = "Form3Undirect"
+    forms(6) = "CollectReport"
+    forms(7) = "CollectReport3"
+    
+    nameTabs(0) = "reportForm1"
+    nameTabs(1) = "reportForm1m2m"
+    nameTabs(2) = "reportForm1ms2ms"
+    nameTabs(3) = "reportForm2"
+    nameTabs(4) = "reportForm3Direct"
+    nameTabs(5) = "reportForm3Undirect"
+    nameTabs(6) = "v_CollectReport"
+    nameTabs(7) = "v_CollectReport_3_33"
+    
+    sheetExists = False
+    For Each s In ThisWorkbook.Sheets
+        If s.Name = "Fields" Then
+            sheetExists = True
+            Set ws = ThisWorkbook.Sheets("Fields")
+            Exit For
+        End If
+    Next s
+        
+    If Not sheetExists Then
+        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.Name = "Fields"
+    End If
+    
+    ws.Cells.ClearContents
+    ws.Cells.ClearFormats
+   
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;" & _
+                 "Data Source=" & DB_SERVER & ";" & _
+                 "Initial Catalog=" & DB_NAME & ";" & _
+                 "Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Dim f As Integer
+   
+    For f = 0 To 7
+        Set cmd = CreateObject("ADODB.Command")
+        Set cmd.ActiveConnection = cn
+        cmd.CommandText = "SELECT TOP 1 * FROM finrep." & nameTabs(f)
+        
+        Set rs = cmd.Execute
+        
+        If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+            If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+                If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                    MsgBox "Запит не повернув жодних даних для форми " + nameTabs(f) + ".", vbInformation
+                Else
+    
+                    ' --- Запис назв колонок ---
+                    ws.Cells(1, (2 * f) + 1).Value = forms(f)
+                    ws.Cells(1, (2 * f) + 2).Value = "Types " + forms(f)
+                    
+                    For i = 0 To rs.Fields.Count - 1
+                        ws.Cells(i + 2, (2 * f) + 1).Value = "[" & rs.Fields(i).Name & "]"
+                        ws.Cells(i + 2, (2 * f) + 2).Value = GetDataTypeName(rs.Fields(i).Type)
+                    Next i
+                
+                End If
+            Else
+                MsgBox "Recordset не був відкритий після виконання збереженої процедури для форми " + forms(f) + ". Перевірте збережену процедуру та параметри.", vbExclamation
+            End If
+        Else
+            MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури для форми " + forms(f) + ". Можливо, процедура не повертає результат.", vbExclamation
+        End If
+            
+        Set rs = Nothing
+        Set cmd = Nothing
+
+    Next
+
+    ws.Activate
+    Columns("A:P").Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 9
+    End With
+    
+    ws.Range(ws.Cells(1, 1), ws.Cells(1, (UBound(forms) + 1) * 2)).Select
+    Selection.Font.Bold = True
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent1
+        .TintAndShade = 0.599993896298105
+        .PatternTintAndShade = 0
+    End With
+
+    ws.UsedRange.Columns.AutoFit
+    ws.Cells(1, 1).Select
+
+Exit Sub
+
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description, vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set cn = Nothing
+    Set rs = Nothing
+    Set cmd = Nothing
+
+End Sub
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш2.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш2'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO FilterForm.frm 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/FilterForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Private Sub btnClose_Click()
+    Me.Hide
+    
+End Sub
+
+Private Sub btnDeleteList_Click()
+    Call DeleteAllSheetsExceptMenu
+    
+End Sub
+
+Private Sub btnExport_Click()
+    Call GetDataBtnClickSQL
+    
+    'MsgBox "Дані успішно завантажено!", vbInformation
+   
+End Sub
+
+Private Sub btnExportData_Click()
+    Call GetDataBtnClick
+    
+End Sub
+
+
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш1.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш3.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш3'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш4.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш4'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш6.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш6'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш7.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш7'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш8.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш8'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш9.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш9'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш10.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш10'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+�Tab4
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ReportForm1
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+[year] = 2025 AND [Month] IN (1,2,3) AND [Edrpou] IN  (42164147,40365742,43314719,24326663, 37854056,36291803,41534355,36004036,43509571,37184072,43105244,02647496,42305106,43842436, 32737851,40901624)
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+`ReportForm1m2ma
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ReportForm1ms2ms
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+`ReportForm2�
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ReportForm3Direct
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ReportForm3Undirecta
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+`CollectReport
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+CollectReport_3_33
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'btnClose'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'MultiPage1'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'btnExport'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "None" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'Page2'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm1'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'tbSQL'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'[year] = 2025 AND [Month] IN (1,2,3) AND [Edrpou] IN  (42164147,40365742,43314719,24326663, 37854056,36291803,41534355,36004036,43509571,37184072,43105244,02647496,42305106,43842436, 32737851,40901624)'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'lblCondition'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm1m2m'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm1ms2ms'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm2'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm3Direct'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbReportForm3Undirect'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbCollectReport'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'1'
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cbCollectReport_3'" IN 'xl/vbaProject.bin' - OLE stream: 'FilterForm/i16/i19'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b'0'
++----------+--------------------+---------------------------------------------+
+|Type      |Keyword             |Description                                  |
++----------+--------------------+---------------------------------------------+
+|AutoExec  |Workbook_Open       |Runs when the Excel Workbook is opened       |
+|AutoExec  |btnClose_Click      |Runs when the file is opened and ActiveX     |
+|          |                    |objects trigger events                       |
+|Suspicious|Open                |May open a file                              |
+|Suspicious|Binary              |May read or write a binary file (if combined |
+|          |                    |with Open)                                   |
+|Suspicious|Command             |May run PowerShell commands                  |
+|Suspicious|Call                |May call a DLL using Excel 4 Macros (XLM/XLF)|
+|Suspicious|CreateObject        |May create an OLE object                     |
+|Suspicious|EXEC                |May run an executable file or a system       |
+|          |                    |command using Excel 4 Macros (XLM/XLF)       |
+|Suspicious|Hex Strings         |Hex-encoded strings were detected, may be    |
+|          |                    |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Suspicious|Base64 Strings      |Base64-encoded strings were detected, may be |
+|          |                    |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Suspicious|VBA obfuscated      |VBA string expressions were detected, may be |
+|          |Strings             |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Hex String|'\x00\x02\x08\x19'  |00020819                                     |
+|Hex String|'\x00\x00\x00\x00\x0|000000000046                                 |
+|          |0F'                 |                                             |
+|Hex String|'B\x16AG'           |42164147                                     |
+|Hex String|@6WB                |40365742                                     |
+|Hex String|'C1G\x19'           |43314719                                     |
+|Hex String|$2fc                |24326663                                     |
+|Hex String|'Yb\x10'        |59999389629810                               |
+|Hex String|'\x00\x02\x08 '     |00020820                                     |
+|Hex String|'Wi'              |57DAE769                                     |
+|Hex String|'i?'            |9269FDB43FD7                                 |
+|Hex String|'Yh\x0f'           |59680F94                                     |
+|Hex String|'i\x02گ'          |6902BCDAAFCB                                 |
+|Hex String|'7@V'              |37854056                                     |
+|Hex String|'6)\x18\x03'        |36291803                                     |
+|Hex String|ASCU                |41534355                                     |
+|Hex String|'6\x00@6'           |36004036                                     |
+|Hex String|'CPq'              |43509571                                     |
+|Hex String|'7\x18@r'           |37184072                                     |
+|Hex String|'C\x10RD'           |43105244                                     |
+|Hex String|'\x02dt'           |02647496                                     |
+|Hex String|'B0Q\x06'           |42305106                                     |
+|Hex String|'C$6'              |43842436                                     |
+|Hex String|2sxQ                |32737851                                     |
+|Hex String|'@\x16$'           |40901624                                     |
+|Base64    |'\x16m'         |Form1m2m                                     |
+|String    |                    |                                             |
+|Base64    |'1'               |Main                                         |
+|String    |                    |                                             |
+|Base64    |'Jf'            |SmallInt                                     |
+|String    |                    |                                             |
+|Base64    |'R{"wJf'      |UnsignedSmallInt                             |
+|String    |                    |                                             |
+|Base64    |'\nzw2'           |Currency                                     |
+|String    |                    |                                             |
+|Base64    |'\x19B\x03'         |GUID                                         |
+|String    |                    |                                             |
+|Base64    |'\r^'              |Date                                         |
+|String    |                    |                                             |
+|Base64    |'\n\x16'           |Char                                         |
+|String    |                    |                                             |
+|Base64    |'\x05$'            |BSTR                                         |
+|String    |                    |                                             |
+|Base64    |'.U\n\x16'     |LongVarWChar                                 |
+|String    |                    |                                             |
+|Base64    |'U\n\x16'        |VarWChar                                     |
+|String    |                    |                                             |
+|Base64    |"!I䞌'"              |IUnknown                                     |
+|String    |                    |                                             |
+|Base64    |'\x16)^N)'         |FileTime                                     |
+|String    |                    |                                             |
+|Base64    |'hhmfi'      |reportForm1ms2ms                             |
+|String    |                    |                                             |
+|VBA string|Provider=SQLOLEDB;Da|"Provider=SQLOLEDB;" &               "Data   |
+|          |ta Source=          |Source="                                     |
+|VBA string|;Initial Catalog=   |";" &               "Initial Catalog="       |
+|VBA string|;Integrated         |";" &               "Integrated              |
+|          |Security=SSPI;      |Security=SSPI;"                              |
+|VBA string|b'1\xa8\xa7'        |Sheets("Main")                               |
+|VBA string|Provider=SQLOLEDB;Da|"Provider=SQLOLEDB;" &                  "Data|
+|          |ta Source=          |Source="                                     |
+|VBA string|;Initial Catalog=   |";" &                  "Initial Catalog="    |
+|VBA string|;Integrated         |";" &                  "Integrated           |
+|          |Security=SSPI;      |Security=SSPI;"                              |
+|Suspicious|VBA Stomping        |VBA Stomping was detected: the VBA source    |
+|          |                    |code and P-code are different, this may have |
+|          |                    |been used to hide malicious code             |
++----------+--------------------+---------------------------------------------+
+VBA Stomping detection is experimental: please report any false positive/negative at https://github.com/decalage2/oletools/issues
+MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):
+
+
+Private Sub Workbook_Open()
+    Call ShowFilterForm
+End Sub
+
+
+Attribute VB_Name = "Module1"
+Sub ShowFilterForm()
+    
+'    With FilterForm
+'        .cbReportForm.Clear
+'        .cbYear.Clear
+'        .cbQr.Clear
+'    End With
+    
+'    With FilterForm.cbReportForm
+'        If .ListCount = 0 Then
+'            .AddItem "Form1"
+'            .AddItem "Form1m2m"
+'            .AddItem "Form1ms2ms"
+'            .AddItem "Form2"
+'            .AddItem "Form3Direct"
+'            .AddItem "Form3Undirect"
+'        End If
+'    End With
+
+'    With FilterForm.cbQr
+'        If .ListCount = 0 Then
+'            .AddItem "1 кв."
+'            .AddItem "2 кв."
+'            .AddItem "3 кв."
+'            .AddItem "4 кв."
+'        End If
+'    End With
+
+'    With FilterForm.cbYear
+'        If .ListCount = 0 Then
+'            .AddItem "2021"
+'            .AddItem "2022"
+'            .AddItem "2023"
+'            .AddItem "2024"
+'            .AddItem "2025"
+'            .AddItem "2026"
+'            .AddItem "2027"
+'            .AddItem "2028"
+'        End If
+'    End With
+
+    Call FilterForm.Show
+    
+End Sub
+
+Sub AddNewSheet(ByVal pSheetName As String, ByRef newSheet As Worksheet)
+
+    Dim ws As Worksheet
+    Dim sheetExists As Boolean
+    Dim newSheetName As String
+    Dim cnt As Integer
+
+    sheetExists = True
+    cnt = 0
+    newSheetName = pSheetName
+    Do While sheetExists
+        For Each ws In ThisWorkbook.Sheets
+            If ws.Name = newSheetName Then
+                sheetExists = True
+                Exit For
+            End If
+            sheetExists = False
+        Next ws
+        
+        If sheetExists Then
+            cnt = cnt + 1
+            newSheetName = pSheetName + "_" + Trim(Str(cnt))
+        End If
+    Loop
+    
+    Set newSheet = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    newSheet.Name = newSheetName
+    'ws.Cells.ClearContents
+    'ws.Cells.ClearFormats
+    
+End Sub
+
+Sub GetDataBtnClick()
+
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim j As Long
+
+    If FilterForm.cbReportForm.ListIndex = -1 Then
+        MsgBox "Треба вибрати тип форми", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.cbYear.ListIndex = -1 Then
+        MsgBox "Треба вибрати рік", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.cbQr.ListIndex = -1 Then
+        MsgBox "Треба вибрати квартал", vbExclamation
+        Exit Sub
+    End If
+    
+    If FilterForm.tbOKPO.Text = "" Then
+        MsgBox "Треба вказати список ОКПО через кому    ", vbExclamation
+        Exit Sub
+    End If
+    
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;Data Source=" & DB_SERVER & ";Initial Catalog=" & DB_NAME & ";Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Set cmd = CreateObject("ADODB.Command")
+    Set cmd.ActiveConnection = cn
+    cmd.CommandText = "[finrep].[getReportFormInfo]"
+    cmd.CommandType = adCmdStoredProc
+    
+    'EXEC [finrep].[getReportFormInfo] @reportForm = 2, @year = 2025, @qr = 1, @edrpou =  '42164147,40365742,43314719,24326663'
+    
+    cmd.Parameters.Append cmd.CreateParameter("@reportForm", adInteger, adParamInput, , FilterForm.cbReportForm.ListIndex + 1)
+    cmd.Parameters.Append cmd.CreateParameter("@year", adInteger, adParamInput, , FilterForm.cbYear.Value)
+    cmd.Parameters.Append cmd.CreateParameter("@qr", adInteger, adParamInput, , FilterForm.cbQr.ListIndex + 1)
+    cmd.Parameters.Append cmd.CreateParameter("@edrpou", adVarWChar, adParamInput, -1, FilterForm.tbOKPO.Value)
+    
+    Set rs = cmd.Execute
+    
+    If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+        If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+            If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                MsgBox "Збережена процедура не повернула жодних даних.", vbInformation
+            Else
+
+                Call AddNewSheet(FilterForm.cbReportForm.Value, ws)
+                '    ws.Cells.ClearContents
+                ' ws.Cells(1, 1).Value = FilterForm.cbReportForm.Value + " за " + FilterForm.cbQr.Value + " " + FilterForm.cbYear.Value + " року."
+                
+                With ActiveSheet.Cells.Font
+                    .Name = "Calibri"
+                    .Size = 9
+                    .Strikethrough = False
+                    .Superscript = False
+                    .Subscript = False
+                    .OutlineFont = False
+                    .Shadow = False
+                    .Underline = xlUnderlineStyleNone
+                    .ThemeColor = xlThemeColorLight1
+                    .TintAndShade = 0
+                    .ThemeFont = xlThemeFontMinor
+                End With
+
+                ' --- Запис назв колонок ---
+                For i = 0 To rs.Fields.Count - 1
+                    ws.Cells(1, i + 1).Value = rs.Fields(i).Name
+                Next i
+            
+                ws.Range(ws.Cells(1, 1), ws.Cells(1, rs.Fields.Count)).Select
+                Selection.Font.Bold = True
+                With Selection.Interior
+                    .Pattern = xlSolid
+                    .PatternColorIndex = xlAutomatic
+                    .ThemeColor = xlThemeColorAccent1
+                    .TintAndShade = 0.599993896298105
+                    .PatternTintAndShade = 0
+                End With
+                
+                ' --- Запис даних ---
+                ws.Range("A2").CopyFromRecordset rs
+                
+                Cells.EntireColumn.AutoFit
+            
+            ws.UsedRange.Columns.AutoFit
+            ws.Cells(1, 1).Select
+            
+            'MsgBox "Дані успішно завантажено!", vbInformation
+                
+            End If
+        Else
+            MsgBox "Recordset не був відкритий після виконання збереженої процедури. Перевірте збережену процедуру та параметри.", vbExclamation
+        End If
+    Else
+        MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури. Можливо, процедура не повертає результат.", vbExclamation
+    End If
+    
+Exit Sub
+
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description, vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set rs = Nothing
+    Set cmd = Nothing
+    Set cn = Nothing
+
+End Sub
+
+
+Sub DeleteAllSheetsExceptMenu()
+
+    Dim ws As Worksheet
+    Dim sheetToDelete As Worksheet
+    Dim confirmMsg As String
+
+    Application.DisplayAlerts = False
+
+    On Error Resume Next
+    Set ws = ThisWorkbook."b'1\xa8\xa7'"
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        MsgBox "Аркуш з назвою 'Main' не знайдно, операцію скасовано.", vbExclamation
+        Application.DisplayAlerts = True
+        Exit Sub
+    End If
+
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name <> "Main" Then
+            Set sheetToDelete = ws
+            sheetToDelete.Delete
+        End If
+    Next ws
+
+    Application.DisplayAlerts = True
+
+End Sub
+
+
+Sub GetDataBtnClickSQL()
+
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim j As Long
+    Dim forms(7) As String
+    Dim selForms(7) As Boolean
+    
+    forms(0) = "Form1"
+    forms(1) = "Form1m2m"
+    forms(2) = "Form1ms2ms"
+    forms(3) = "Form2"
+    forms(4) = "Form3Direct"
+    forms(5) = "Form3Undirect"
+    forms(6) = "CollectReport"
+    forms(7) = "CollectReport3"
+    
+    If FilterForm.cbReportForm1.Value = 0         And FilterForm.cbReportForm1m2m.Value = 0         And FilterForm.cbReportForm1ms2ms.Value = 0         And FilterForm.cbReportForm2.Value = 0         And FilterForm.cbReportForm3Direct.Value = 0         And FilterForm.cbReportForm3Undirect.Value = 0         And FilterForm.cbCollectReport.Value = 0         And FilterForm.cbCollectReport_3.Value = 0     Then
+        MsgBox "Треба вибрати хочаб одну форму", vbExclamation
+        Exit Sub
+    End If
+    
+    selForms(0) = FilterForm.cbReportForm1.Value
+    selForms(1) = FilterForm.cbReportForm1m2m.Value
+    selForms(2) = FilterForm.cbReportForm1ms2ms.Value
+    selForms(3) = FilterForm.cbReportForm2.Value
+    selForms(4) = FilterForm.cbReportForm3Direct.Value
+    selForms(5) = FilterForm.cbReportForm3Undirect.Value
+    selForms(6) = FilterForm.cbCollectReport.Value
+    selForms(7) = FilterForm.cbCollectReport_3.Value
+    
+    If FilterForm.tbSQL.Text = "" Then
+        MsgBox "Треба вказати умови вивантаження ", vbExclamation
+        Exit Sub
+    End If
+    
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;Data Source=" & DB_SERVER & ";Initial Catalog=" & DB_NAME & ";Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Dim f As Integer
+    
+    For f = 0 To 7
+    
+        If selForms(f) = True Then
+        
+            Set cmd = CreateObject("ADODB.Command")
+            Set cmd.ActiveConnection = cn
+            cmd.CommandText = "[finrep].[getReportFormInfoSQL]"
+            cmd.CommandType = adCmdStoredProc
+        
+            cmd.Parameters.Append cmd.CreateParameter("@reportForm", adInteger, adParamInput, , f + 1)
+            cmd.Parameters.Append cmd.CreateParameter("@tSQL", adVarWChar, adParamInput, -1, FilterForm.tbSQL.Value)
+        
+            'EXEC [finrep].[getReportFormInfoSQL] @reportForm = 2, @tSQL =  '[year] = 2025 AND [Month] IN (1,2,3) AND [Edrpou] IN  (42164147,40365742,43314719,24326663)'
+        
+            Set rs = cmd.Execute
+        
+            If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+                If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+                    If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                        MsgBox "Збережена процедура не повернула жодних даних для форми " + forms(f) + ".", vbInformation
+                    Else
+    
+                'If FilterFormSQL.cbReportForm1.Value = 1 Then
+                '    Call AddNewSheet("ReportForm1", ws)
+                'End If
+                        Call AddNewSheet(forms(f), ws)
+        
+                    '    ws.Cells.ClearContents
+                    ' ws.Cells(1, 1).Value = FilterForm.cbReportForm.Value + " за " + FilterForm.cbQr.Value + " " + FilterForm.cbYear.Value + " року."
+                    
+                        With ActiveSheet.Cells.Font
+                            .Name = "Calibri"
+                            .Size = 9
+                            .Strikethrough = False
+                            .Superscript = False
+                            .Subscript = False
+                            .OutlineFont = False
+                            .Shadow = False
+                            .Underline = xlUnderlineStyleNone
+                            .ThemeColor = xlThemeColorLight1
+                            .TintAndShade = 0
+                            .ThemeFont = xlThemeFontMinor
+                        End With
+    
+                    ' --- Запис назв колонок ---
+                    'Dim fld As ADODB.Field
+                    'For Each fld In rs.Fields
+                    '    Debug.Print "????? ???????: " & fld.Name & ", ???: " & fld.Type
+                    'Next
+                        For i = 0 To rs.Fields.Count - 1
+                            ws.Cells(1, i + 1).Value = rs.Fields(i).Name '& " (" & GetDataTypeName(rs.Fields(i).Type) & ")"
+                        Next i
+                
+                        ws.Range(ws.Cells(1, 1), ws.Cells(1, rs.Fields.Count)).Select
+                        Selection.Font.Bold = True
+                        With Selection.Interior
+                            .Pattern = xlSolid
+                            .PatternColorIndex = xlAutomatic
+                            .ThemeColor = xlThemeColorAccent1
+                            .TintAndShade = 0.599993896298105
+                            .PatternTintAndShade = 0
+                        End With
+                    
+                    ' --- Запис даних ---
+                        ws.Range("A2").CopyFromRecordset rs
+                    
+                        Cells.EntireColumn.AutoFit
+                
+                        ws.UsedRange.Columns.AutoFit
+                        ws.Cells(1, 1).Select
+                
+                        'MsgBox "Дані успішно завантажено!", vbInformation
+                    
+                    End If
+                Else
+                    MsgBox "Recordset не був відкритий після виконання збереженої процедури для форми " + forms(f) + ". Перевірте збережену процедуру та параметри.", vbExclamation
+                    Exit Sub
+                End If
+            Else
+                MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури для форми " + forms(f) + ". Можливо, процедура не повертає результат.", vbExclamation
+                Exit Sub
+            End If
+        End If
+            
+        Set rs = Nothing
+        Set cmd = Nothing
+    Next
+    
+    MsgBox "Завантаження завершено.", vbInformation
+
+Exit Sub
+    
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description & " для форми " + forms(f) + ".", vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set cn = Nothing
+
+End Sub
+
+Public Function GetDataTypeName(dataType As ADODB.DataTypeEnum) As String
+    Select Case dataType
+        Case adEmpty
+            GetDataTypeName = "Empty"
+        Case adTinyInt
+            GetDataTypeName = "TinyInt"
+        Case adSmallInt
+            GetDataTypeName = "SmallInt"
+        Case adInteger
+            GetDataTypeName = "Integer"
+        Case adBigInt
+            GetDataTypeName = "BigInt"
+        Case adUnsignedTinyInt
+            GetDataTypeName = "UnsignedTinyInt"
+        Case adUnsignedSmallInt
+            GetDataTypeName = "UnsignedSmallInt"
+        Case adUnsignedInt
+            GetDataTypeName = "UnsignedInt"
+        Case adUnsignedBigInt
+            GetDataTypeName = "UnsignedBigInt"
+        Case adSingle
+            GetDataTypeName = "Single"
+        Case adDouble
+            GetDataTypeName = "Double"
+        Case adCurrency
+            GetDataTypeName = "Currency"
+        Case adDecimal
+            GetDataTypeName = "Decimal"
+        Case adNumeric
+            GetDataTypeName = "Numeric"
+        Case adBoolean
+            GetDataTypeName = "Boolean"
+        Case adError
+            GetDataTypeName = "Error"
+        Case adUserDefined
+            GetDataTypeName = "UserDefined"
+        Case adVariant
+            GetDataTypeName = "Variant"
+        Case adGUID
+            GetDataTypeName = "GUID"
+        Case adDate
+            GetDataTypeName = "Date"
+        Case adDBDate
+            GetDataTypeName = "DBDate"
+        Case adDBTime
+            GetDataTypeName = "DBTime"
+        Case adDBTimeStamp
+            GetDataTypeName = "DBTimeStamp"
+        Case adChar
+            GetDataTypeName = "Char"
+        Case adWChar
+            GetDataTypeName = "WChar"
+        Case adBSTR
+            GetDataTypeName = "BSTR"
+        Case adLongVarChar
+            GetDataTypeName = "LongVarChar"
+        Case adLongVarWChar
+            GetDataTypeName = "LongVarWChar"
+        Case adVarChar
+            GetDataTypeName = "VarChar"
+        Case adVarWChar
+            GetDataTypeName = "VarWChar"
+        Case adIDispatch
+            GetDataTypeName = "IDispatch"
+        Case adIUnknown
+            GetDataTypeName = "IUnknown"
+        Case adBinary
+            GetDataTypeName = "Binary"
+        Case adVarBinary
+            GetDataTypeName = "VarBinary"
+        Case adLongVarBinary
+            GetDataTypeName = "LongVarBinary"
+        Case adChapter
+            GetDataTypeName = "Chapter"
+        Case adFileTime
+            GetDataTypeName = "FileTime"
+        Case adPropVariant
+            GetDataTypeName = "PropVariant"
+        Case adArray
+            GetDataTypeName = "Array"
+        Case Else
+            GetDataTypeName = "Unknown"
+    End Select
+End Function
+
+Sub ExportFields()
+    Dim cn As Object
+    Dim cmd As Object
+    Dim rs As Object
+    Dim forms(7) As String
+    Dim nameTabs(7) As String
+    Dim ws As Worksheet
+    Dim sheetExists As Boolean
+    
+    forms(0) = "Form1"
+    forms(1) = "Form1m2m"
+    forms(2) = "Form1ms2ms"
+    forms(3) = "Form2"
+    forms(4) = "Form3Direct"
+    forms(5) = "Form3Undirect"
+    forms(6) = "CollectReport"
+    forms(7) = "CollectReport3"
+    
+    nameTabs(0) = "reportForm1"
+    nameTabs(1) = "reportForm1m2m"
+    nameTabs(2) = "reportForm1ms2ms"
+    nameTabs(3) = "reportForm2"
+    nameTabs(4) = "reportForm3Direct"
+    nameTabs(5) = "reportForm3Undirect"
+    nameTabs(6) = "v_CollectReport"
+    nameTabs(7) = "v_CollectReport_3_33"
+    
+    sheetExists = False
+    For Each s In ThisWorkbook.Sheets
+        If s.Name = "Fields" Then
+            sheetExists = True
+            Set ws = ThisWorkbook.Sheets("Fields")
+            Exit For
+        End If
+    Next s
+        
+    If Not sheetExists Then
+        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.Name = "Fields"
+    End If
+    
+    ws.Cells.ClearContents
+    ws.Cells.ClearFormats
+   
+    ' --- Налаштування підключення до бази даних SQL Server ---
+    Const DB_SERVER As String = "clientprofile-db-sqls.bank.lan" ' Ім'я SQL Server
+    Const DB_NAME As String = "ClientProfile" ' Ім'я бази даних
+
+    connString = "Provider=SQLOLEDB;Data Source=" & DB_SERVER & ";Initial Catalog=" & DB_NAME & ";Integrated Security=SSPI;"
+
+    On Error GoTo ErrorHandler
+
+    Set cn = CreateObject("ADODB.Connection")
+    cn.Open connString
+
+    Dim f As Integer
+   
+    For f = 0 To 7
+        Set cmd = CreateObject("ADODB.Command")
+        Set cmd.ActiveConnection = cn
+        cmd.CommandText = "SELECT TOP 1 * FROM finrep." & nameTabs(f)
+        
+        Set rs = cmd.Execute
+        
+        If Not rs Is Nothing Then ' Перевіряємо, чи об'єкт Recordset був успішно створений
+            If rs.State = adStateOpen Then ' Перевіряємо, чи Recordset відкритий
+                If rs.EOF And rs.BOF Then ' Перевіряємо, чи Recordset порожній (EOF - End Of File, BOF - Beginning Of File)
+                    MsgBox "Запит не повернув жодних даних для форми " + nameTabs(f) + ".", vbInformation
+                Else
+    
+                    ' --- Запис назв колонок ---
+                    ws.Cells(1, (2 * f) + 1).Value = forms(f)
+                    ws.Cells(1, (2 * f) + 2).Value = "Types " + forms(f)
+                    
+                    For i = 0 To rs.Fields.Count - 1
+                        ws.Cells(i + 2, (2 * f) + 1).Value = "[" & rs.Fields(i).Name & "]"
+                        ws.Cells(i + 2, (2 * f) + 2).Value = GetDataTypeName(rs.Fields(i).Type)
+                    Next i
+                
+                End If
+            Else
+                MsgBox "Recordset не був відкритий після виконання збереженої процедури для форми " + forms(f) + ". Перевірте збережену процедуру та параметри.", vbExclamation
+            End If
+        Else
+            MsgBox "Не вдалося отримати Recordset після виконання збереженої процедури для форми " + forms(f) + ". Можливо, процедура не повертає результат.", vbExclamation
+        End If
+            
+        Set rs = Nothing
+        Set cmd = Nothing
+
+    Next
+
+    ws.Activate
+    Columns("A:P").Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 9
+    End With
+    
+    ws.Range(ws.Cells(1, 1), ws.Cells(1, (UBound(forms) + 1) * 2)).Select
+    Selection.Font.Bold = True
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent1
+        .TintAndShade = 0.599993896298105
+        .PatternTintAndShade = 0
+    End With
+
+    ws.UsedRange.Columns.AutoFit
+    ws.Cells(1, 1).Select
+
+Exit Sub
+
+ErrorHandler:
+    MsgBox "Виникла помилка: " & Err.Description, vbCritical
+    If Not cn Is Nothing Then
+        If cn.State = adStateOpen Then cn.Close
+    End If
+    If Not rs Is Nothing Then
+        If rs.State = adStateOpen Then rs.Close
+    End If
+    
+    Set cn = Nothing
+    Set rs = Nothing
+    Set cmd = Nothing
+
+End Sub
+
+Attribute VB_Name = "Аркуш2"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "FilterForm"
+Attribute VB_Base = "0{57DAE769-38AA-4E06-9FF4-9269FDB43FD7}{59680F94-0D99-4B6E-9A61-6902BCDAAFCB}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Private Sub btnClose_Click()
+    Me.Hide
+    
+End Sub
+
+Private Sub btnDeleteList_Click()
+    Call DeleteAllSheetsExceptMenu
+    
+End Sub
+
+Private Sub btnExport_Click()
+    Call GetDataBtnClickSQL
+    
+    'MsgBox "Дані успішно завантажено!", vbInformation
+   
+End Sub
+
+Private Sub btnExportData_Click()
+    Call GetDataBtnClick
+    
+End Sub
+
+
+
+Attribute VB_Name = "Аркуш1"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш3"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш4"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш6"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш7"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш8"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш9"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш10"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+�Tab4
+ReportForm1
+[year] = 2025 AND [Month] IN (1,2,3) AND [Edrpou] IN  (42164147,40365742,43314719,24326663, 37854056,36291803,41534355,36004036,43509571,37184072,43105244,02647496,42305106,43842436, 32737851,40901624)
+`ReportForm1m2ma
+ReportForm1ms2ms
+`ReportForm2�
+ReportForm3Direct
+ReportForm3Undirecta
+`CollectReport
+CollectReport_3_33
+
