@@ -1,0 +1,1173 @@
+olevba 0.60.2 on Python 3.13.5 - http://decalage.info/python/oletools
+===============================================================================
+FILE: /mnt/data/CommonReport_R1_0_1.xlsb
+Type: OpenXML
+WARNING  For now, VBA stomping cannot be detected for files in memory
+-------------------------------------------------------------------------------
+VBA MACRO ЦяКнига.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/ЦяКнига'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш3.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш3'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш4.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш4'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш1.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Private Sub Worksheet_Activate()
+    Call FormatTableColumn
+End Sub
+
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    Call FormatTableColumn
+End Sub
+Private Sub FormatTableColumn()
+    Dim tbl As ListObject
+    Dim wrapRange, Target, dataRange As Range
+    Set Traget = Me.Range("A:E")
+    On Error Resume Next
+    'If Not Intersect(Target, Columns("A:D")) Is Nothing Then
+        Columns("A").ColumnWidth = 13
+        Columns("B").ColumnWidth = 13
+        Columns("C").ColumnWidth = 40
+        Columns("D").ColumnWidth = 55
+        Columns("E").ColumnWidth = 25
+    'End If
+    Set tbl = Me.ListObjects("CodeCustomer")
+    On Error GoTo SafeExit
+    Application.EnableEvents = False
+    If Not tbl Is Nothing Then
+        Set dataRange = tbl.DataBodyRange.Columns(1) 'ListColumns("ЄДРПОУ").DataBodyRange
+        If Not dataRange Is Nothing Then
+            ' Застосовуємо форматування
+            dataRange.NumberFormat = "0"
+            dataRange.Interior.Color = RGB(255, 250, 235)
+            dataRange.Font.Color = RGB(0, 0, 0)
+        End If
+        Set wrapRange = tbl.DataBodyRange.Columns(3)    'ListColumns("Наявні рахунки").DataBodyRange
+        If Not wrapRange Is Nothing Then
+            wrapRange.Font.Size = 9
+            wrapRange.WrapText = True
+        End If
+    End If
+SafeExit:
+    Application.EnableEvents = True
+End Sub
+
+'Dim tbl As ListObject
+'Set tbl = ActiveSheet.ListObjects("Code")
+'tbl.ListColumns(2).Range.ColumnWidth = 25
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш2.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш2'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO GroupForm.frm 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+' Оголошення змінних на рівні модуля
+Dim groupData As Variant      ' Масив з даними груп та кодів
+Dim groupColumn As Long       ' Номер стовпця з групами
+Dim codeColumn As Long        ' Номер стовпця з кодами
+
+
+
+' Подія при завантаженні форми
+Private Sub UserForm_Initialize()
+    ' Очищаємо елементи
+    cmbGroup.Clear
+    lstCodes.Clear
+    InfoLabel.Caption = "Готовий до роботи. Виберіть групу."
+    InfoLabel.ForeColor = RGB(0, 0, 0)  ' Чорний колір
+    
+    ' Встановлюємо властивості ListBox
+    lstCodes.MultiSelect = fmMultiSelectMulti
+    lstCodes.ColumnCount = 1
+    
+    ' Перевіряємо наявність таблиці CodeCustomer
+    If Not TableExists("CodeCustomer") Then
+        InfoLabel.Caption = "ПОМИЛКА: Таблиця 'CodeCustomer' не знайдена!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Автоматично завантажуємо групи при відкритті форми
+    LoadGroups
+End Sub
+
+' Завантаження списку груп із файлу
+Private Sub LoadGroups()
+    Dim sourceWorkbook As Workbook
+    Dim sourceSheet As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim i As Long, j As Long
+    Dim groups As Object
+    Dim groupName As Variant
+    Dim headerRow As Long
+    
+    ' Шлях до файлу на робочому столі
+    Dim filePath As String
+    filePath = Environ("USERPROFILE") & "\Desktop\counterpartGroups.xlsx"
+    
+    ' Оновлюємо статус
+    InfoLabel.Caption = "Завантаження файлу counterpartGroups.xlsx..."
+    InfoLabel.ForeColor = RGB(0, 0, 255)  ' Синій колір
+    DoEvents
+    
+    ' Перевіряємо чи існує файл
+    If Dir(filePath) = "" Then
+        InfoLabel.Caption = "ПОМИЛКА: Файл не знайдено: " & filePath
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Відкриваємо файл-джерело
+    On Error GoTo ErrorHandler
+    Set sourceWorkbook = Workbooks.Open(filePath, ReadOnly:=True)
+    Set sourceSheet = sourceWorkbook.Worksheets(1)
+    
+    ' Визначаємо останній заповнений рядок і стовпець
+    lastRow = sourceSheet.Cells(sourceSheet.Rows.Count, 1).End(xlUp).Row
+    lastCol = sourceSheet.Cells(1, sourceSheet.Columns.Count).End(xlToLeft).Column
+    
+    ' Шукаємо заголовки стовпців (у першому рядку)
+    headerRow = 1
+    groupColumn = 0
+    codeColumn = 0
+    
+    For j = 1 To lastCol
+        If sourceSheet.Cells(headerRow, j).Value = "Група" Then
+            groupColumn = j
+        ElseIf sourceSheet.Cells(headerRow, j).Value = "ЄДРПОУ" Then
+            codeColumn = j
+        End If
+    Next j
+    
+    ' Перевіряємо, чи знайшли потрібні стовпці
+    If groupColumn = 0 Or codeColumn = 0 Then
+        InfoLabel.Caption = "ПОМИЛКА: Не знайдено стовпці 'Група' або 'ЄДРПОУ'!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        sourceWorkbook.Close SaveChanges:=False
+        Exit Sub
+    End If
+    
+    ' Використовуємо Dictionary для унікальних груп
+    Set groups = CreateObject("Scripting.Dictionary")
+    
+    ' Зчитуємо унікальні групи
+    For i = headerRow + 1 To lastRow
+        groupName = sourceSheet.Cells(i, groupColumn).Value
+        If groupName <> "" And Not IsNull(groupName) Then
+            groups(groupName) = 1
+        End If
+    Next i
+    
+    ' Заповнюємо ComboBox
+    cmbGroup.Clear
+    For Each groupName In groups.Keys
+        cmbGroup.AddItem groupName
+    Next groupName
+    
+    ' Зберігаємо всі дані для подальшого використання
+    ' Зчитуємо тільки потрібні стовпці
+    ReDim groupData(1 To lastRow - headerRow, 1 To 2)
+    For i = headerRow + 1 To lastRow
+        groupData(i - headerRow, 1) = sourceSheet.Cells(i, codeColumn).Value  ' ЄДРПОУ
+        groupData(i - headerRow, 2) = sourceSheet.Cells(i, groupColumn).Value ' Група
+    Next i
+    
+    ' Закриваємо файл-джерело
+    sourceWorkbook.Close SaveChanges:=False
+    
+    If cmbGroup.ListCount > 0 Then
+        InfoLabel.Caption = "Успішно завантажено " & cmbGroup.ListCount & " груп. Виберіть групу."
+        InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Else
+        InfoLabel.Caption = "Увага: Групи не знайдено у файлі!"
+        InfoLabel.ForeColor = RGB(255, 165, 0)  ' Помаранчевий колір
+    End If
+    
+    Exit Sub
+ErrorHandler:
+    InfoLabel.Caption = "ПОМИЛКА: " & Err.Description
+    InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+    If Not sourceWorkbook Is Nothing Then sourceWorkbook.Close SaveChanges:=False
+End Sub
+
+' Подія при виборі групи
+Private Sub cmbGroup_Change()
+    Dim i As Long
+    Dim selectedGroup As String
+    
+    If cmbGroup.ListIndex = -1 Then Exit Sub
+    selectedGroup = cmbGroup.Value
+    ' Очищаємо ListBox
+    lstCodes.Clear
+    ' Якщо даних немає, виходимо
+    If IsEmpty(groupData) Then Exit Sub
+    ' Проходимо по всіх рядках даних
+    For i = 1 To UBound(groupData, 1)
+        If groupData(i, 2) = selectedGroup Then
+            lstCodes.AddItem groupData(i, 1)
+        End If
+    Next i
+    ' Виводимо інформацію в Label
+    If lstCodes.ListCount > 0 Then
+        InfoLabel.Caption = "Знайдено " & lstCodes.ListCount & " кодів для групи '" & selectedGroup & "'"
+        ActiveSheet.Range("CurentGroup").Value = selectedGroup
+        InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Else
+        InfoLabel.Caption = "Кодів для групи '" & selectedGroup & "' не знайдено!"
+        InfoLabel.ForeColor = RGB(255, 165, 0)  ' Помаранчевий колір
+    End If
+End Sub
+
+' Оновлення існуючої таблиці CodeCustomer (з повним очищенням та оновленням зв'язків)
+Private Sub btnUpdate_Click()
+    Dim targetTable As ListObject
+    Dim i As Long
+    Dim formulaText As String
+    
+    ' Перевіряємо, чи вибрано хоча б один код
+    If lstCodes.ListCount = 0 Then
+        InfoLabel.Caption = "ПОМИЛКА: Немає кодів для додавання!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Оновлюємо статус
+    InfoLabel.Caption = "Оновлення таблиці CodeCustomer..."
+    InfoLabel.ForeColor = RGB(0, 0, 255)  ' Синій колір
+    DoEvents
+    
+    ' Отримуємо існуючу таблицю CodeCustomer
+    On Error Resume Next
+    Set targetTable = ActiveSheet.ListObjects("CodeCustomer")
+    If targetTable Is Nothing Then
+        ' Спроба знайти таблицю на будь-якому аркуші
+        Dim ws As Worksheet
+        For Each ws In ThisWorkbook.Worksheets
+            On Error Resume Next
+            Set targetTable = ws.ListObjects("CodeCustomer")
+            On Error GoTo 0
+            If Not targetTable Is Nothing Then Exit For
+        Next ws
+    End If
+    On Error GoTo ErrorHandler
+    If targetTable Is Nothing Then
+        InfoLabel.Caption = "ПОМИЛКА: Таблиця 'CodeCustomer' не знайдена!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    ' Вимірюємо час початку
+    Dim startTime As Double
+    startTime = Timer
+    ' Вимірюємо оновлення екрану
+    Application.ScreenUpdating = False
+    ' ==================================================
+    ' ПОВНЕ ВИДАЛЕННЯ ВСІХ ЗАПИСІВ З ТАБЛИЦІ
+    ' ==================================================
+    If targetTable.ListRows.Count > 0 Then
+        ' Видаляємо всі рядки даних (залишаємо тільки заголовок)
+        targetTable.DataBodyRange.Delete
+    End If
+    ' Додаємо вибрані коди в таблицю
+    For i = 0 To lstCodes.ListCount - 1
+        targetTable.ListRows.Add
+        targetTable.DataBodyRange.Cells(i + 1, 1).Value = lstCodes.List(i)
+    Next i
+    
+    formulaText = "=IFERROR(VLOOKUP([@ЄДРПОУ],DATA_CUSTOMER[[ЄДРПОУ]:[Наіменування]],2,0),""Очікування…"")"
+    targetTable.ListColumns(2).DataBodyRange.Formula = formulaText
+    'formulaText = "=IFERROR(VLOOKUP([@ЄДРПОУ],DATA_CUSTOMER[[ЄДРПОУ]:[Рахунки]],3,0),""Очікування…"")"
+    'targetTable.ListColumns(3).DataBodyRange.Formula = formulaText
+    
+    
+    
+    
+    InfoLabel.Caption = "Оновлення інформації..."
+    DoEvents
+    Application.ScreenUpdating = True
+    RefreshCustomerData
+    ' Обчислюємо час виконання
+    Dim elapsedTime As Double
+    elapsedTime = Timer - startTime
+    
+    ' Повідомлення про успішне завершення
+    InfoLabel.Caption = "Готово! Додано " & lstCodes.ListCount & " записів. Час: " & Format(elapsedTime, "0.0") & " сек."
+    InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Unload Me
+    Exit Sub
+ErrorHandler:
+    Application.ScreenUpdating = True
+    InfoLabel.Caption = "ПОМИЛКА: " & Err.Description
+    InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+End Sub
+
+' Кнопка для примусового перезавантаження груп
+Private Sub btnLoad_Click()
+    LoadGroups
+End Sub
+
+' Перевірка існування таблиці в книзі
+Function TableExists(tableName As String) As Boolean
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    
+    TableExists = False
+    For Each ws In ThisWorkbook.Worksheets
+        For Each tbl In ws.ListObjects
+            If tbl.Name = tableName Then
+                TableExists = True
+                Exit Function
+            End If
+        Next tbl
+    Next ws
+End Function
+-------------------------------------------------------------------------------
+VBA MACRO Module1.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Public frmUpdate As UpdateForm
+Sub ClearCustomerTable()
+    ClearTableByName "CodeCustomer"
+End Sub
+Sub RefreshAllData()
+    Application.StatusBar = "Іде процес оновлення..."
+    UpdateForm.Show vbModeless
+    DoEvents
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    RefreshConnections "DATA_CUSTOMER", False
+    RefreshConnections "DATA_CREDIT", False
+    RefreshConnections "DATA_BALANCE", False
+    Application.StatusBar = False
+    Unload UpdateForm
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    MsgBox "Оновлення завершено!", vbInformation
+End Sub
+Sub RefreshCustomerData()
+    Dim connectionName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_CUSTOMER"
+    ' Виклик функції оновлення
+    RefreshConnections connectionName, False
+End Sub
+Sub RefreshCreditData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_CREDIT"
+    ' Виклик функції оновлення
+    RefreshConnections connectionName, True
+End Sub
+Sub RefreshBalanceData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_BALANCE"
+    RefreshConnections connectionName, True
+End Sub
+Sub RefreshIncomeData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_INCOME"
+    RefreshConnections connectionName, True
+End Sub
+' Глобальна змінна для форми (в стандартному модулі)
+Public frmUpdate As UpdateForm
+
+Sub RefreshConnections(ByVal connectionName As String, ByVal isMessage As Boolean)
+    Dim conn As WorkbookConnection
+    Dim foundConnection As Boolean
+    
+    If isMessage Then
+        Set frmUpdate = New UpdateForm
+        frmUpdate.Show vbModeless
+        DoEvents
+        Application.ScreenUpdating = False
+        Application.DisplayAlerts = False
+    End If
+    
+    Application.StatusBar = "Іде процес оновлення..."
+    On Error GoTo ErrorHandler
+    
+    foundConnection = False
+    
+    For Each conn In ThisWorkbook.Connections
+        ' Перевіряємо скасування
+        If isMessage And Not frmUpdate Is Nothing Then
+            DoEvents
+            If frmUpdate.Cancelled Then GoTo CancelledHandler
+        End If
+        
+        If Len(conn.Name) >= Len(connectionName) Then
+            If Right(conn.Name, Len(connectionName)) = connectionName Then
+                conn.Refresh
+                foundConnection = True
+                Exit For
+            End If
+        End If
+    Next conn
+    
+    If Not foundConnection Then
+        MsgBox "Підключення '" & connectionName & "' не знайдено!", vbExclamation
+    Else
+        If isMessage Then
+            If Not frmUpdate Is Nothing Then
+                Unload frmUpdate
+                Set frmUpdate = Nothing
+            End If
+            Application.ScreenUpdating = True
+            Application.DisplayAlerts = True
+            MsgBox "Оновлення завершено!", vbInformation
+        End If
+    End If
+    
+    GoTo CleanUp
+    
+CancelledHandler:
+    If isMessage Then
+        If Not frmUpdate Is Nothing Then
+            Unload frmUpdate
+            Set frmUpdate = Nothing
+        End If
+        Application.ScreenUpdating = True
+        Application.DisplayAlerts = True
+        MsgBox "Оновлення скасовано користувачем!", vbExclamation
+    End If
+    
+CleanUp:
+    Application.StatusBar = False
+    Exit Sub
+    
+ErrorHandler:
+    If Not frmUpdate Is Nothing Then
+        Unload frmUpdate
+        Set frmUpdate = Nothing
+    End If
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    MsgBox "Помилка: " & Err.Description, vbCritical
+    Application.StatusBar = False
+End Sub
+
+Sub ClearTableByName(ByVal tableName As String)
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    Dim found As Boolean
+    
+    ' Перебираємо всі аркуші в пошуках таблиці
+    For Each ws In ThisWorkbook.Worksheets
+        On Error Resume Next
+        Set tbl = ws.ListObjects(tableName)
+        On Error GoTo 0
+        
+        If Not tbl Is Nothing Then
+            found = True
+            ' Перевіряємо, чи є в таблиці рядки даних
+            If Not tbl.DataBodyRange Is Nothing Then
+                ' Очищуємо вміст комірок, але залишаємо саму таблицю та її зв'язок з запитом
+                tbl.DataBodyRange.Delete
+                RefreshCustomerData
+                'ClearContents
+                MsgBox "Таблицю '" & tableName & "' на аркуші '" & ws.Name & "' успішно очищено."
+            Else
+                RefreshCustomerData
+                MsgBox "Таблиця '" & tableName & "' на аркуші '" & ws.Name & "' вже порожня."
+            End If
+            ws.Range("CurentGroup").Value = ""
+            Exit For ' Припускаємо, що назви таблиць у книзі унікальні
+        End If
+    Next ws
+    
+    If Not found Then
+        MsgBox "Таблицю з ім'ям '" & tableName & "' не знайдено в жодному аркуші книги.", vbExclamation
+    End If
+End Sub
+Sub ShowGroupSelector()
+    GroupForm.Show
+End Sub
+
+-------------------------------------------------------------------------------
+VBA MACRO UpdateForm.frm 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/UpdateForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Public cancelRefresh As Boolean
+Public Property Get Cancelled() As Boolean
+    Cancelled = cancelRefresh
+End Property
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = 0 Then ' хрестик
+        cancelRefresh = True
+    End If
+End Sub
+-------------------------------------------------------------------------------
+VBA MACRO Аркуш5.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Аркуш5'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Segoe UI
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+TahomaUI
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Segoe UI
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+TahomaUI
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'UpdateForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Segoe UI
+-------------------------------------------------------------------------------
+VBA FORM STRING IN 'xl/vbaProject.bin' - OLE stream: 'UpdateForm/o'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Segoe UI
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'cmbGroup'" IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b''
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'Label1'" IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'btnUpdate'" IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'InfoLabel'" IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'lstCodes'" IN 'xl/vbaProject.bin' - OLE stream: 'GroupForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+b''
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'Label1'" IN 'xl/vbaProject.bin' - OLE stream: 'UpdateForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
+-------------------------------------------------------------------------------
+VBA FORM Variable "b'Label2'" IN 'xl/vbaProject.bin' - OLE stream: 'UpdateForm'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+None
++----------+--------------------+---------------------------------------------+
+|Type      |Keyword             |Description                                  |
++----------+--------------------+---------------------------------------------+
+|AutoExec  |btnUpdate_Click     |Runs when the file is opened and ActiveX     |
+|          |                    |objects trigger events                       |
+|AutoExec  |cmbGroup_Change     |Runs when the file is opened and ActiveX     |
+|          |                    |objects trigger events                       |
+|Suspicious|Environ             |May read system environment variables        |
+|Suspicious|Open                |May open a file                              |
+|Suspicious|Call                |May call a DLL using Excel 4 Macros (XLM/XLF)|
+|Suspicious|CreateObject        |May create an OLE object                     |
+|Suspicious|Hex Strings         |Hex-encoded strings were detected, may be    |
+|          |                    |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Suspicious|Base64 Strings      |Base64-encoded strings were detected, may be |
+|          |                    |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Suspicious|VBA obfuscated      |VBA string expressions were detected, may be |
+|          |Strings             |used to obfuscate strings (option --decode to|
+|          |                    |see all)                                     |
+|Hex String|'\x00\x02\x08\x19'  |00020819                                     |
+|Hex String|'\x00\x00\x00\x00\x0|000000000046                                 |
+|          |0F'                 |                                             |
+|Hex String|'\x00\x02\x08 '     |00020820                                     |
+|Hex String|'W\x10z'           |BF57107A                                     |
+|Hex String|'^`'             |87F4865EC160                                 |
+|Hex String|'%'              |F525E0C7                                     |
+|Hex String|'}OOP3'            |7D4F4F845033                                 |
+|Hex String|"5\x0e'"           |35D00E27                                     |
+|Hex String|'6&:'            |F2D536263AB1                                 |
+|Hex String|'-'              |2DB0B8F7                                     |
+|Hex String|'4'            |CDFE34C4E4FA                                 |
+|Base64    |'\n^\n-g'       |CodeCustomer                                 |
+|String    |                    |                                             |
+|Base64    |'\n^'              |Code                                         |
+|String    |                    |                                             |
+|VBA string|b'\n\x87^\n\xeb-    |ListObjects("CodeCustomer")                  |
+|          |\xa2g\xab'          |                                             |
+|VBA string|b'\n\x87^'          |ListObjects("Code")                          |
+|VBA string|b'\n\x87^\n\xeb-    |TableExists("CodeCustomer")                  |
+|          |\xa2g\xab'          |                                             |
+|VBA string|%USERPROFILE%\Deskto|Environ("USERPROFILE") &                     |
+|          |p\counterpartGroups.|"\Desktop\counterpartGroups.xlsx"            |
+|          |xlsx                |                                             |
++----------+--------------------+---------------------------------------------+
+MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):
+
+
+
+Attribute VB_Name = "Аркуш3"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш4"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "Аркуш1"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+Private Sub Worksheet_Activate()
+    Call FormatTableColumn
+End Sub
+
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    Call FormatTableColumn
+End Sub
+Private Sub FormatTableColumn()
+    Dim tbl As ListObject
+    Dim wrapRange, Target, dataRange As Range
+    Set Traget = Me.Range("A:E")
+    On Error Resume Next
+    'If Not Intersect(Target, Columns("A:D")) Is Nothing Then
+        Columns("A").ColumnWidth = 13
+        Columns("B").ColumnWidth = 13
+        Columns("C").ColumnWidth = 40
+        Columns("D").ColumnWidth = 55
+        Columns("E").ColumnWidth = 25
+    'End If
+    Set tbl = Me."b'\n\x87^\n\xeb-\xa2g\xab'"
+    On Error GoTo SafeExit
+    Application.EnableEvents = False
+    If Not tbl Is Nothing Then
+        Set dataRange = tbl.DataBodyRange.Columns(1) 'ListColumns("ЄДРПОУ").DataBodyRange
+        If Not dataRange Is Nothing Then
+            ' Застосовуємо форматування
+            dataRange.NumberFormat = "0"
+            dataRange.Interior.Color = RGB(255, 250, 235)
+            dataRange.Font.Color = RGB(0, 0, 0)
+        End If
+        Set wrapRange = tbl.DataBodyRange.Columns(3)    'ListColumns("Наявні рахунки").DataBodyRange
+        If Not wrapRange Is Nothing Then
+            wrapRange.Font.Size = 9
+            wrapRange.WrapText = True
+        End If
+    End If
+SafeExit:
+    Application.EnableEvents = True
+End Sub
+
+'Dim tbl As ListObject
+'Set tbl = ActiveSheet."b'\n\x87^'"
+'tbl.ListColumns(2).Range.ColumnWidth = 25
+
+Attribute VB_Name = "Аркуш2"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Attribute VB_Name = "GroupForm"
+Attribute VB_Base = "0{BF57107A-8017-4CF5-99D6-87F4865EC160}{F525E0C7-230A-4263-8DF9-7D4F4F845033}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+
+' Оголошення змінних на рівні модуля
+Dim groupData As Variant      ' Масив з даними груп та кодів
+Dim groupColumn As Long       ' Номер стовпця з групами
+Dim codeColumn As Long        ' Номер стовпця з кодами
+
+
+
+' Подія при завантаженні форми
+Private Sub UserForm_Initialize()
+    ' Очищаємо елементи
+    cmbGroup.Clear
+    lstCodes.Clear
+    InfoLabel.Caption = "Готовий до роботи. Виберіть групу."
+    InfoLabel.ForeColor = RGB(0, 0, 0)  ' Чорний колір
+    
+    ' Встановлюємо властивості ListBox
+    lstCodes.MultiSelect = fmMultiSelectMulti
+    lstCodes.ColumnCount = 1
+    
+    ' Перевіряємо наявність таблиці CodeCustomer
+    If Not "b'\n\x87^\n\xeb-\xa2g\xab'" Then
+        InfoLabel.Caption = "ПОМИЛКА: Таблиця 'CodeCustomer' не знайдена!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Автоматично завантажуємо групи при відкритті форми
+    LoadGroups
+End Sub
+
+' Завантаження списку груп із файлу
+Private Sub LoadGroups()
+    Dim sourceWorkbook As Workbook
+    Dim sourceSheet As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim i As Long, j As Long
+    Dim groups As Object
+    Dim groupName As Variant
+    Dim headerRow As Long
+    
+    ' Шлях до файлу на робочому столі
+    Dim filePath As String
+    filePath = "%USERPROFILE%\Desktop\counterpartGroups.xlsx"
+    
+    ' Оновлюємо статус
+    InfoLabel.Caption = "Завантаження файлу counterpartGroups.xlsx..."
+    InfoLabel.ForeColor = RGB(0, 0, 255)  ' Синій колір
+    DoEvents
+    
+    ' Перевіряємо чи існує файл
+    If Dir(filePath) = "" Then
+        InfoLabel.Caption = "ПОМИЛКА: Файл не знайдено: " & filePath
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Відкриваємо файл-джерело
+    On Error GoTo ErrorHandler
+    Set sourceWorkbook = Workbooks.Open(filePath, ReadOnly:=True)
+    Set sourceSheet = sourceWorkbook.Worksheets(1)
+    
+    ' Визначаємо останній заповнений рядок і стовпець
+    lastRow = sourceSheet.Cells(sourceSheet.Rows.Count, 1).End(xlUp).Row
+    lastCol = sourceSheet.Cells(1, sourceSheet.Columns.Count).End(xlToLeft).Column
+    
+    ' Шукаємо заголовки стовпців (у першому рядку)
+    headerRow = 1
+    groupColumn = 0
+    codeColumn = 0
+    
+    For j = 1 To lastCol
+        If sourceSheet.Cells(headerRow, j).Value = "Група" Then
+            groupColumn = j
+        ElseIf sourceSheet.Cells(headerRow, j).Value = "ЄДРПОУ" Then
+            codeColumn = j
+        End If
+    Next j
+    
+    ' Перевіряємо, чи знайшли потрібні стовпці
+    If groupColumn = 0 Or codeColumn = 0 Then
+        InfoLabel.Caption = "ПОМИЛКА: Не знайдено стовпці 'Група' або 'ЄДРПОУ'!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        sourceWorkbook.Close SaveChanges:=False
+        Exit Sub
+    End If
+    
+    ' Використовуємо Dictionary для унікальних груп
+    Set groups = CreateObject("Scripting.Dictionary")
+    
+    ' Зчитуємо унікальні групи
+    For i = headerRow + 1 To lastRow
+        groupName = sourceSheet.Cells(i, groupColumn).Value
+        If groupName <> "" And Not IsNull(groupName) Then
+            groups(groupName) = 1
+        End If
+    Next i
+    
+    ' Заповнюємо ComboBox
+    cmbGroup.Clear
+    For Each groupName In groups.Keys
+        cmbGroup.AddItem groupName
+    Next groupName
+    
+    ' Зберігаємо всі дані для подальшого використання
+    ' Зчитуємо тільки потрібні стовпці
+    ReDim groupData(1 To lastRow - headerRow, 1 To 2)
+    For i = headerRow + 1 To lastRow
+        groupData(i - headerRow, 1) = sourceSheet.Cells(i, codeColumn).Value  ' ЄДРПОУ
+        groupData(i - headerRow, 2) = sourceSheet.Cells(i, groupColumn).Value ' Група
+    Next i
+    
+    ' Закриваємо файл-джерело
+    sourceWorkbook.Close SaveChanges:=False
+    
+    If cmbGroup.ListCount > 0 Then
+        InfoLabel.Caption = "Успішно завантажено " & cmbGroup.ListCount & " груп. Виберіть групу."
+        InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Else
+        InfoLabel.Caption = "Увага: Групи не знайдено у файлі!"
+        InfoLabel.ForeColor = RGB(255, 165, 0)  ' Помаранчевий колір
+    End If
+    
+    Exit Sub
+ErrorHandler:
+    InfoLabel.Caption = "ПОМИЛКА: " & Err.Description
+    InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+    If Not sourceWorkbook Is Nothing Then sourceWorkbook.Close SaveChanges:=False
+End Sub
+
+' Подія при виборі групи
+Private Sub cmbGroup_Change()
+    Dim i As Long
+    Dim selectedGroup As String
+    
+    If cmbGroup.ListIndex = -1 Then Exit Sub
+    selectedGroup = cmbGroup.Value
+    ' Очищаємо ListBox
+    lstCodes.Clear
+    ' Якщо даних немає, виходимо
+    If IsEmpty(groupData) Then Exit Sub
+    ' Проходимо по всіх рядках даних
+    For i = 1 To UBound(groupData, 1)
+        If groupData(i, 2) = selectedGroup Then
+            lstCodes.AddItem groupData(i, 1)
+        End If
+    Next i
+    ' Виводимо інформацію в Label
+    If lstCodes.ListCount > 0 Then
+        InfoLabel.Caption = "Знайдено " & lstCodes.ListCount & " кодів для групи '" & selectedGroup & "'"
+        ActiveSheet.Range("CurentGroup").Value = selectedGroup
+        InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Else
+        InfoLabel.Caption = "Кодів для групи '" & selectedGroup & "' не знайдено!"
+        InfoLabel.ForeColor = RGB(255, 165, 0)  ' Помаранчевий колір
+    End If
+End Sub
+
+' Оновлення існуючої таблиці CodeCustomer (з повним очищенням та оновленням зв'язків)
+Private Sub btnUpdate_Click()
+    Dim targetTable As ListObject
+    Dim i As Long
+    Dim formulaText As String
+    
+    ' Перевіряємо, чи вибрано хоча б один код
+    If lstCodes.ListCount = 0 Then
+        InfoLabel.Caption = "ПОМИЛКА: Немає кодів для додавання!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    
+    ' Оновлюємо статус
+    InfoLabel.Caption = "Оновлення таблиці CodeCustomer..."
+    InfoLabel.ForeColor = RGB(0, 0, 255)  ' Синій колір
+    DoEvents
+    
+    ' Отримуємо існуючу таблицю CodeCustomer
+    On Error Resume Next
+    Set targetTable = ActiveSheet."b'\n\x87^\n\xeb-\xa2g\xab'"
+    If targetTable Is Nothing Then
+        ' Спроба знайти таблицю на будь-якому аркуші
+        Dim ws As Worksheet
+        For Each ws In ThisWorkbook.Worksheets
+            On Error Resume Next
+            Set targetTable = ws."b'\n\x87^\n\xeb-\xa2g\xab'"
+            On Error GoTo 0
+            If Not targetTable Is Nothing Then Exit For
+        Next ws
+    End If
+    On Error GoTo ErrorHandler
+    If targetTable Is Nothing Then
+        InfoLabel.Caption = "ПОМИЛКА: Таблиця 'CodeCustomer' не знайдена!"
+        InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+        Exit Sub
+    End If
+    ' Вимірюємо час початку
+    Dim startTime As Double
+    startTime = Timer
+    ' Вимірюємо оновлення екрану
+    Application.ScreenUpdating = False
+    ' ==================================================
+    ' ПОВНЕ ВИДАЛЕННЯ ВСІХ ЗАПИСІВ З ТАБЛИЦІ
+    ' ==================================================
+    If targetTable.ListRows.Count > 0 Then
+        ' Видаляємо всі рядки даних (залишаємо тільки заголовок)
+        targetTable.DataBodyRange.Delete
+    End If
+    ' Додаємо вибрані коди в таблицю
+    For i = 0 To lstCodes.ListCount - 1
+        targetTable.ListRows.Add
+        targetTable.DataBodyRange.Cells(i + 1, 1).Value = lstCodes.List(i)
+    Next i
+    
+    formulaText = "=IFERROR(VLOOKUP([@ЄДРПОУ],DATA_CUSTOMER[[ЄДРПОУ]:[Наіменування]],2,0),""Очікування…"")"
+    targetTable.ListColumns(2).DataBodyRange.Formula = formulaText
+    'formulaText = "=IFERROR(VLOOKUP([@ЄДРПОУ],DATA_CUSTOMER[[ЄДРПОУ]:[Рахунки]],3,0),""Очікування…"")"
+    'targetTable.ListColumns(3).DataBodyRange.Formula = formulaText
+    
+    
+    
+    
+    InfoLabel.Caption = "Оновлення інформації..."
+    DoEvents
+    Application.ScreenUpdating = True
+    RefreshCustomerData
+    ' Обчислюємо час виконання
+    Dim elapsedTime As Double
+    elapsedTime = Timer - startTime
+    
+    ' Повідомлення про успішне завершення
+    InfoLabel.Caption = "Готово! Додано " & lstCodes.ListCount & " записів. Час: " & Format(elapsedTime, "0.0") & " сек."
+    InfoLabel.ForeColor = RGB(0, 128, 0)  ' Зелений колір
+    Unload Me
+    Exit Sub
+ErrorHandler:
+    Application.ScreenUpdating = True
+    InfoLabel.Caption = "ПОМИЛКА: " & Err.Description
+    InfoLabel.ForeColor = RGB(255, 0, 0)  ' Червоний колір
+End Sub
+
+' Кнопка для примусового перезавантаження груп
+Private Sub btnLoad_Click()
+    LoadGroups
+End Sub
+
+' Перевірка існування таблиці в книзі
+Function TableExists(tableName As String) As Boolean
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    
+    TableExists = False
+    For Each ws In ThisWorkbook.Worksheets
+        For Each tbl In ws.ListObjects
+            If tbl.Name = tableName Then
+                TableExists = True
+                Exit Function
+            End If
+        Next tbl
+    Next ws
+End Function
+
+Attribute VB_Name = "Module1"
+Public frmUpdate As UpdateForm
+Sub ClearCustomerTable()
+    ClearTableByName "CodeCustomer"
+End Sub
+Sub RefreshAllData()
+    Application.StatusBar = "Іде процес оновлення..."
+    UpdateForm.Show vbModeless
+    DoEvents
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    RefreshConnections "DATA_CUSTOMER", False
+    RefreshConnections "DATA_CREDIT", False
+    RefreshConnections "DATA_BALANCE", False
+    Application.StatusBar = False
+    Unload UpdateForm
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    MsgBox "Оновлення завершено!", vbInformation
+End Sub
+Sub RefreshCustomerData()
+    Dim connectionName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_CUSTOMER"
+    ' Виклик функції оновлення
+    RefreshConnections connectionName, False
+End Sub
+Sub RefreshCreditData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_CREDIT"
+    ' Виклик функції оновлення
+    RefreshConnections connectionName, True
+End Sub
+Sub RefreshBalanceData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_BALANCE"
+    RefreshConnections connectionName, True
+End Sub
+Sub RefreshIncomeData()
+    Dim connectionName As String
+    Dim pivotTableName As String
+    ' Назва підключення PowerQuery
+    connectionName = "DATA_INCOME"
+    RefreshConnections connectionName, True
+End Sub
+' Глобальна змінна для форми (в стандартному модулі)
+Public frmUpdate As UpdateForm
+
+Sub RefreshConnections(ByVal connectionName As String, ByVal isMessage As Boolean)
+    Dim conn As WorkbookConnection
+    Dim foundConnection As Boolean
+    
+    If isMessage Then
+        Set frmUpdate = New UpdateForm
+        frmUpdate.Show vbModeless
+        DoEvents
+        Application.ScreenUpdating = False
+        Application.DisplayAlerts = False
+    End If
+    
+    Application.StatusBar = "Іде процес оновлення..."
+    On Error GoTo ErrorHandler
+    
+    foundConnection = False
+    
+    For Each conn In ThisWorkbook.Connections
+        ' Перевіряємо скасування
+        If isMessage And Not frmUpdate Is Nothing Then
+            DoEvents
+            If frmUpdate.Cancelled Then GoTo CancelledHandler
+        End If
+        
+        If Len(conn.Name) >= Len(connectionName) Then
+            If Right(conn.Name, Len(connectionName)) = connectionName Then
+                conn.Refresh
+                foundConnection = True
+                Exit For
+            End If
+        End If
+    Next conn
+    
+    If Not foundConnection Then
+        MsgBox "Підключення '" & connectionName & "' не знайдено!", vbExclamation
+    Else
+        If isMessage Then
+            If Not frmUpdate Is Nothing Then
+                Unload frmUpdate
+                Set frmUpdate = Nothing
+            End If
+            Application.ScreenUpdating = True
+            Application.DisplayAlerts = True
+            MsgBox "Оновлення завершено!", vbInformation
+        End If
+    End If
+    
+    GoTo CleanUp
+    
+CancelledHandler:
+    If isMessage Then
+        If Not frmUpdate Is Nothing Then
+            Unload frmUpdate
+            Set frmUpdate = Nothing
+        End If
+        Application.ScreenUpdating = True
+        Application.DisplayAlerts = True
+        MsgBox "Оновлення скасовано користувачем!", vbExclamation
+    End If
+    
+CleanUp:
+    Application.StatusBar = False
+    Exit Sub
+    
+ErrorHandler:
+    If Not frmUpdate Is Nothing Then
+        Unload frmUpdate
+        Set frmUpdate = Nothing
+    End If
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    MsgBox "Помилка: " & Err.Description, vbCritical
+    Application.StatusBar = False
+End Sub
+
+Sub ClearTableByName(ByVal tableName As String)
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    Dim found As Boolean
+    
+    ' Перебираємо всі аркуші в пошуках таблиці
+    For Each ws In ThisWorkbook.Worksheets
+        On Error Resume Next
+        Set tbl = ws.ListObjects(tableName)
+        On Error GoTo 0
+        
+        If Not tbl Is Nothing Then
+            found = True
+            ' Перевіряємо, чи є в таблиці рядки даних
+            If Not tbl.DataBodyRange Is Nothing Then
+                ' Очищуємо вміст комірок, але залишаємо саму таблицю та її зв'язок з запитом
+                tbl.DataBodyRange.Delete
+                RefreshCustomerData
+                'ClearContents
+                MsgBox "Таблицю '" & tableName & "' на аркуші '" & ws.Name & "' успішно очищено."
+            Else
+                RefreshCustomerData
+                MsgBox "Таблиця '" & tableName & "' на аркуші '" & ws.Name & "' вже порожня."
+            End If
+            ws.Range("CurentGroup").Value = ""
+            Exit For ' Припускаємо, що назви таблиць у книзі унікальні
+        End If
+    Next ws
+    
+    If Not found Then
+        MsgBox "Таблицю з ім'ям '" & tableName & "' не знайдено в жодному аркуші книги.", vbExclamation
+    End If
+End Sub
+Sub ShowGroupSelector()
+    GroupForm.Show
+End Sub
+
+
+Attribute VB_Name = "UpdateForm"
+Attribute VB_Base = "0{35D00E27-0D6B-48B4-8F1E-F2D536263AB1}{2DB0B8F7-1BC4-4F65-94A2-CDFE34C4E4FA}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = False
+Public cancelRefresh As Boolean
+Public Property Get Cancelled() As Boolean
+    Cancelled = cancelRefresh
+End Property
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = 0 Then ' хрестик
+        cancelRefresh = True
+    End If
+End Sub
+
+Attribute VB_Name = "Аркуш5"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+Segoe UI
+TahomaUI
+Segoe UI
+TahomaUI
+Segoe UI
+Segoe UI
+

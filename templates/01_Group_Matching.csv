@@ -1,0 +1,3 @@
+﻿group_id,matching_year,group_name,edrpou,client_name,inclusion_flag,consolidation_method,ownership_share_pct,match_key,is_main_company,note
+GROUP_001,2025,Назва групи,EDRPOU_1,Компанія 1,1,SUM,100,2025|EDRPOU_1,1,text CSV template row
+GROUP_001,2025,Назва групи,EDRPOU_2,Компанія 2,1,SUM,100,2025|EDRPOU_2,0,text CSV template row

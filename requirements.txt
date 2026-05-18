@@ -1,0 +1,5 @@
+# No mandatory third-party dependencies for the CSV ETL and dashboard.
+# Optional local extras:
+# openpyxl>=3.1.0      # only if you want local XLSX import/export
+# pyodbc>=5.0.0        # only for live ClientProfile SQL Server read-only extraction
+# oracledb>=2.0.0      # only for live Oracle read-only queries

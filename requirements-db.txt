@@ -1,0 +1,5 @@
+# Optional production dependencies for live read-only internal database connections.
+# Install only on deployment hosts that need direct DB extraction.
+pyodbc>=5.1.0
+oracledb>=2.4.0
+python-dotenv>=1.0.1

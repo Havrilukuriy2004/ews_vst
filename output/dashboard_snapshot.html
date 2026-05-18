@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EWS Group Financials Dashboard</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; --ok:#22c55e; --warn:#f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, Segoe UI, Arial, sans-serif; background:linear-gradient(135deg,#0f172a,#172554); color:var(--text); }
+    header { padding:28px 32px; border-bottom:1px solid rgba(255,255,255,.1); }
+    h1 { margin:0; font-size:30px; }
+    h2 { margin-top:32px; }
+    main { padding:24px 32px 48px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; }
+    .card, .panel { background:rgba(17,24,39,.88); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px; box-shadow:0 12px 28px rgba(0,0,0,.25); }
+    .label { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+    .value { font-size:26px; font-weight:700; margin-top:8px; }
+    table { width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; }
+    th, td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; }
+    th { color:#bae6fd; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+    tr:hover { background:rgba(56,189,248,.08); }
+    .status-ok { color:var(--ok); font-weight:700; }
+    .status-bad { color:#fb7185; font-weight:700; }
+    svg { width:100%; max-height:300px; } rect { fill:var(--accent); } .svg-label,.svg-value { fill:var(--text); font-size:13px; }
+    .muted { color:var(--muted); } code { color:#bae6fd; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EWS Group Financials Dashboard</h1>
+    <p class="muted">Групова фінансова звітність, EWS indicators, validation і DB connection readiness.</p>
+  </header>
+  <main>
+    <section class="grid">
+      <div class="card"><div class="label">Revenue</div><div class="value">12 500.00</div></div>
+      <div class="card"><div class="label">EBITDA</div><div class="value">2 750.00</div></div>
+      <div class="card"><div class="label">EBITDA margin</div><div class="value">22.00%</div></div>
+      <div class="card"><div class="label">Net Debt / EBITDA</div><div class="value">0.97</div></div>
+      <div class="card"><div class="label">ICRm</div><div class="value">8.59</div></div>
+      <div class="card"><div class="label">Financial Cycle</div><div class="value">59.31 days</div></div>
+    </section>
+
+    <section class="panel"><h2>Revenue by group</h2><svg viewBox="0 0 720 96" role="img" aria-label="Revenue chart"><text x="0" y="40" class="svg-label">GROUP_001</text><rect x="110" y="24" width="520" height="24" rx="4"></rect><text x="640" y="41" class="svg-value">12 500.00</text></svg></section>
+    <section class="panel"><h2>Group indicators</h2><table><thead><tr><th>entity_id</th><th>entity_name</th><th>year</th><th>revenue</th><th>ebitda</th><th>ebitda_margin</th><th>net_debt_to_ebitda</th><th>icrm</th><th>financial_cycle_days</th></tr></thead><tbody><tr><td>GROUP_001</td><td>Назва групи</td><td>2025</td><td>12 500.00</td><td>2 750.00</td><td>0.22</td><td>0.97</td><td>8.59</td><td>59.31</td></tr></tbody></table></section>
+    <section class="panel"><h2>Company drill-down</h2><table><thead><tr><th>entity_id</th><th>entity_name</th><th>year</th><th>revenue</th><th>ebitda</th><th>net_income</th><th>total_assets</th><th>equity</th></tr></thead><tbody><tr><td>EDRPOU_1</td><td>Компанія 1</td><td>2025</td><td>7 200.00</td><td>1 620.00</td><td>820.00</td><td>6 100.00</td><td>2 800.00</td></tr><tr><td>EDRPOU_2</td><td>Компанія 2</td><td>2025</td><td>5 300.00</td><td>1 130.00</td><td>560.00</td><td>4 200.00</td><td>1 700.00</td></tr></tbody></table></section>
+    <section class="panel"><h2>Validation</h2><table><thead><tr><th>check_name</th><th>status</th><th>details</th></tr></thead><tbody><tr><td>Raw rows have matched group_id</td><td>OK</td><td>All included raw rows matched by matching_year+edrpou</td></tr><tr><td>No duplicate company report keys</td><td>OK</td><td>No duplicate report keys</td></tr><tr><td>Assets balance equation</td><td>OK</td><td>Line 1300 equals line 1900 within +/-1</td></tr><tr><td>Group rows created</td><td>OK</td><td>Group rows: 1</td></tr><tr><td>Dashboard metrics not blank</td><td>OK</td><td>Revenue, EBITDA, assets and equity available</td></tr></tbody></table></section>
+    <section class="panel"><h2>Database connections</h2><table><thead><tr><th>name</th><th>configured</th><th>driver_available</th><th>ready</th><th>message</th></tr></thead><tbody><tr><td>clientprofile_sql_server</td><td>True</td><td>False</td><td>False</td><td>pyodbc is not installed in this environment</td></tr><tr><td>oracle_ews</td><td>False</td><td>False</td><td>False</td><td>ORACLE_DSN and ORACLE_USER are required</td></tr></tbody></table></section>
+    <section class="panel"><h2>API</h2><p class="muted">JSON endpoints: <code>/api/summary</code>, <code>/api/indicators</code>, <code>/api/validation</code>, <code>/api/group-wide</code>, <code>/api/db-status</code>.</p></section>
+  </main>
+</body>
+</html>

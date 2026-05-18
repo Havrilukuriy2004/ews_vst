@@ -1,0 +1,484 @@
+/*TCREDITDOCDATAMODULE.DOCDATASET-Кредитный договор*/
+select /*+ FIRST_ROWS(1) opt_param('_optimizer_push_pred_cost_based' 'false') cursor_sharing_exact use_weak_name_resl dynamic_sampling(0) OPTIMIZER_FEATURES_ENABLE(default) xmlindex_sel_idx_tbl*/ 
+  -- Кредиты
+  -- comp doc
+  doc.rowid doc_rowid,
+  comp.rowid as comp_rowid,
+  comp.id,
+  comp.id as reference_id,
+  comp.doc_date,
+  comp.entry_bank_date,
+  comp.status,
+  comp.status_route_id,
+  1 as status_id, -- strange feature for selector
+  comp_status.status_category,
+  status_cat.is_open as status_is_open,
+  decode(status_cat.is_open, 'T', 'Да', 'F', 'Нет') as status_is_open_desc,
+  cust_status.sys_name as status_sys_name,
+  cust_status.name as status_name,
+  comp.doc_no,
+  comp.description,
+  comp.document_type_id,
+  -- contract
+  contr.rowid as contr_rowid,
+  contr.begin_amount,
+  contr.begin_base_amount,
+  abs(contr.begin_amount) as begin_abs_amount,
+  abs(contr.begin_base_amount) as begin_abs_base_amount,
+  contr.begin_date,
+  contr.end_date,
+  decode(contr.end_date, null, 'T', 'F') as is_to_be_called,
+  decode(contr.end_date, null, 'Да', 'Нет') as is_to_be_called_desc,
+  contr.end_date - contr.begin_date as range,
+  contr.close_date,
+  contr.collection_id,
+  contr.currency_id,
+  currency.code as currency_code,
+  currency.name as currency_name,
+  currency.short_name as currency_short_name,
+  contr.customer_id,
+  customer.okpo as customer_okpo,
+  customer.code as customer_code,
+  customer.name as customer_name,
+  customer.short_name as customer_short_name,
+  contr.type_id,
+  contr_type.code as type_code,
+  contr_type.name as type_name,
+  contr_type.sys_name as type_sys_name,
+  decode(trim(contr_type.is_type),
+               'I', 'I-Индивидуальный',
+               'K', 'K-Корпоративный',
+               'M', 'M-Межбанковский',
+               'P', 'P-Прочее',
+               null, 'P-Прочее'
+              ) is_type,
+  bb.id bank_busines_id,
+  bb.code bank_busines_code,
+  bb.name bank_busines_name,
+
+  contr.parent_id,
+ -- Вид контракта
+  contr.contract_mode,
+  decode(contr.contract_mode,
+           0, '0 - Генеральный',
+           1, '1 - Обычный',
+           2, '2 - Родительский',
+           3, '3 - Линия',
+           4, '4 - Связаный'  ) contract_mode_desc,
+  contr.division_id div_id,
+  division.code     div_code,
+  division.name     div_name,
+
+  -- credit
+  doc.interest,
+--G  doc.calc_reserve,
+  doc.real_credit_payment,
+
+  -- rest account
+  rest_dir.id as rest_dir_acc_id,
+  rest_dir.amount as rest_dir_amount,
+  abs(rest_dir.amount) as rest_dir_abs_amount,
+  rest_dir.base_amount as rest_dir_base_amount,
+  abs(rest_dir.base_amount) as rest_dir_abs_base_amount,
+  decode(rest_dir.account_class, 'S', rest_dir.parent_id, rest_dir.id) as rest_base_id,
+  substr(decode(rest_dir.account_class, 'S', rest_dir.account_number_parent||'/'||rest_dir.account_full_no, rest_dir.account_full_no),1,100) as rest_base_full_no,
+  rest_dir.account_class as rest_base_account_class,
+  rest_dir.amount as rest_base_amount,
+  rest_dir.base_amount as rest_base_base_amount,
+  rest_dir.last_post_date as rest_base_last_post_date,
+  decode(rest_dir.account_class, 'S', rest_dir.id, null) as rest_sub_id,
+
+  -- interest account
+  int_dir.id as int_dir_acc_id,
+  abs(int_dir.amount) as int_dir_abs_amount,
+  int_dir.amount as int_dir_amount,
+  int_dir.base_amount as int_dir_base_amount,
+  abs(int_dir.base_amount) as int_dir_abs_base_amount,
+--G  int_dir.id as int_base_id,
+  substr(decode(int_dir.account_class, 'S', int_dir.account_number_parent||'/'||int_dir.account_full_no, int_dir.account_full_no),1,100) as int_base_full_no,
+  int_dir.account_class as int_base_account_class,
+  int_dir.amount as int_base_amount,
+  int_dir.base_amount as int_base_base_amount,
+  int_dir.last_post_date as int_base_last_post_date,
+
+  -- Вексель
+/*G  b.id as bill_id,
+  b.bill_no as bill_no,
+  b.issuer as bill_issuer,
+  b.amount as bill_amount,
+  b.payment_date as bill_payment_date,
+  b.is_dishonored as bill_is_dishonored,
+  decode(b.is_dishonored, 'T', 'Да', 'Нет') as is_dishonored_desc,
+  b.description as bill_description,*/
+  decode(contr_type.bill_type, null, 'F', 'T') as is_bill,
+  contr_type.is_insurance is_type_insurance,
+  doc.is_insurance,
+--G  doc.agro_end_date,
+  doc.is_interest doc_is_interest,
+  doc.is_commiss doc_is_commiss,
+--G  doc.is_uniform doc_is_uniform,
+  doc.IS_SHTRAF as doc_IS_SHTRAF,
+
+--G  csi.code as csi_code,
+--G  csi.name as csi_name,
+--G  cbi.code as cbi_code,
+--G  cbi.name as cbi_name,
+
+  nvl(ci.end_calc_date, contr.end_date) as ci_end_date,
+  substr(to_char(ci.interest_esp_real,'FM9999999999999990D'||rpad('00000000',8/*:INT_ESP_SCALE*/,'0')),1,100) interest_esp_real,
+  substr(to_char(ci.interest_esp,'FM9999999999999990D'||rpad('00000000',8/*:INT_ESP_SCALE*/,'0')),1,100) interest_esp,
+  substr(to_char(ci.interest_esp_real_bank,'FM9999999999999990D'||rpad('00000000',8/*:INT_ESP_SCALE*/,'0')),1,100) interest_esp_real_bank,
+  substr(to_char(ci.interest_esp_int_rest,'FM9999999999999990D'||rpad('00000000',8/*:INT_ESP_SCALE*/,'0')),1,100) interest_esp_int_rest,
+  substr(to_char(ci.interest_real_bank,'FM9999999999999990D'||rpad('00000000',8/*:INT_ESP_SCALE*/,'0')),1,100) interest_real_bank,
+--  contr.id reference_id,
+  sh.id as holder_id,
+  sh.code as holder_code,
+  sh.user_name as holder_name,
+  /*:ADD_SELECT*/
+  contr.parent_id reference_parent_id,
+  --cast(null as varchar2(255)) parent_doc_no,
+  --cast(null as varchar2(255)) parent_doc_descr,
+/*G  doc.is_bonus as is_bonus,
+  decode(doc.is_bonus, 'T', 'Да', 'F', 'Нет') as is_bonus_name,
+  doc.kl_ql_id as kl_ql_id,
+  kl_ql.code as kl_ql_code,
+  kl_ql.name as kl_ql_name,
+  kl_ql.rl_min as kl_ql_rl_min,
+  kl_ql.rl_max as kl_ql_rl_max,
+  doc.ql_rank_id,
+  ql_rank.code as ql_rank_code,
+  ql_rank.name as ql_rank_name,
+  doc.is_reserve_int_real,
+  decode(doc.is_reserve_int_real, 'T', 'Да', 'Нет') as is_reserve_int_real_desc,
+  doc.rl_value,
+  ci.credit_stan_ni_id as crs_ni_id,
+  crs_ni.code as crs_ni_code,
+  crs_ni.name as crs_ni_name,
+  ci.credit_borg_ni_id as crb_ni_id,
+  crb_ni.code as crb_ni_code,
+  crb_ni.name as crb_ni_name,
+  doc.customer_type_ni_id as customer_type_ni_id,
+  customer_type_ni.code as customer_type_ni_code,
+  customer_type_ni.name as customer_type_ni_name,*/
+  fs_final.customer_type_ni_id as final_cust_type_ni_id,
+  final_cust_type_ni.code as final_cust_type_ni_code,
+  final_cust_type_ni.name as final_cust_type_ni_name,
+--G  doc.scoring_value as scoring_value,
+  credit_type.is_factoring as type_is_factoring,
+  credit_type.is_factoring_waybill as type_is_factoring_waybill
+
+/*G  ,jur.integral_amount --Сумма рассчитанного интегрального показателя для расчета финансового состояния
+  ,doc.is_devaluated -- Признак обесцененного кредита
+  ,decode(doc.is_devaluated, 'T', 'Да', 'Нет') as is_devaluated_desc
+  ,devaluation_date -- Дата уценки
+
+  -- Резерв МСФО
+  ,doc.msfo_calc_reserve
+  ,doc.msfo_calc_base_reserve
+  ,doc.is_reserve_int_real_ias
+  ,decode(doc.is_reserve_int_real_ias, 'T', 'Да', 'Нет') as is_reserve_int_real_ias_desc
+  ,doc.rl_value_ias
+  ,doc.pd
+  ,doc.rr
+  ,doc.lgd
+  ,doc.significance_flag as significance_flag_id
+  ,ias_significance.code as significance_flag_code
+  ,ias_significance.name as significance_flag_name
+  ,ci.portf_id -- Ссылка на портфель к которому относится кредит
+  ,ias_potrfolio.code as portf_code
+  ,ias_potrfolio.name as portf_name
+  ,doc.lip_id
+  ,lip_dict.code as lip_code
+  ,lip_dict.name as lip_name
+  ,lip_dict.value as lip_value*/
+
+  -- ПП НБУ №351
+/*G  ,doc.pd_nbu
+  ,doc.rr_nbu
+  ,doc.lgd_nbu*/
+  ,doc.nbu_calc_reserve
+  ,doc.nbu_calc_base_reserve
+/*G  ,doc.pd_rank_id
+  ,pd_rank.code as pd_rank_code
+  ,pd_rank.name as pd_rank_name
+  ,pd_rank.pd_value as pd_rank_pd_value
+  ,doc.pd_nbu_id
+  ,pd_nbu.code as pd_nbu_code
+  ,pd_nbu.name as pd_nbu_name
+  ,pd_nbu.pd_min as pd_nbu_pd_min
+  ,pd_nbu.pd_max as pd_nbu_pd_max
+  ,pd_nbu.pd_avg as pd_nbu_pd_avg
+  ,pd_nbu.lgd_min as pd_nbu_lgd_min
+  ,pd_nbu.lgd_max as pd_nbu_lgd_max
+  ,pd_nbu.rr_nbu_min as pd_nbu_rr_nbu_min
+  ,pd_nbu.rr_nbu_max as pd_nbu_rr_nbu_max*/
+  ,doc.ccf_nbu_id
+  ,ccf_nbu.code as ccf_nbu_code
+  ,ccf_nbu.name as ccf_nbu_name
+  ,ccf_nbu.value as ccf_nbu_value
+  ,ccf_nbu.pawn_group as ccf_nbu_pawn_group
+--G  ,doc.bought_credit_serv_type
+--G  ,decode(doc.bought_credit_serv_type, 'CUST_PAYMENTS','За счет заёмщика', 'PAWN_SELL', 'За счет залога', 'Нет') as bought_credit_serv_type_desc
+--G  ,doc.pd_nbu_fo
+--G  ,ci.nbu_credit_stan_ni_id
+--G  ,nbu_credit_stan_ni.code as nbu_credit_stan_ni_code
+--G  ,nbu_credit_stan_ni.name as nbu_credit_stan_ni_name
+--G  ,doc.scoring_value_nbu
+  ,ci.nbu_portf_id
+  ,nbu_ias_potrfolio.code nbu_portf_code
+  ,nbu_ias_potrfolio.name nbu_portf_name
+  ,nbu_ias_potrfolio.is_portf_basis as nbu_is_portf_basis
+  ,decode(nbu_ias_potrfolio.is_portf_basis,'T','Портфельная', 'F', 'Индивидуальная') as nbu_is_portf_basis_desc
+  ,doc.date_npl
+  ,doc.pawn_corr_npl_dict_id
+  ,pawn_corr_npl_dict.code pawn_corr_npl_code
+  ,pawn_corr_npl_dict.name pawn_corr_npl_name
+  ,pawn_corr_npl_dict.asset_npl_days_min
+  ,pawn_corr_npl_dict.asset_npl_days_max
+  ,pawn_corr_npl_dict.k_corr pawn_corr_npl_k_corr
+  ,cred_insu.pawn_corr_npl_dict_spr_id
+  ,pawn_corr_npl_spr_dict.code pawn_corr_npl_spr_code
+  ,pawn_corr_npl_spr_dict.name pawn_corr_npl_spr_name
+  ,pawn_corr_npl_spr_dict.asset_npl_days_min asset_npl_spr_days_min
+  ,pawn_corr_npl_spr_dict.asset_npl_days_max asset_npl_spr_days_max
+  ,pawn_corr_npl_spr_dict.k_corr pawn_corr_npl_spr_k_corr
+--G  ,doc.pd_ifrs_fin
+--G  ,doc.pd_ifrs_fo_fin
+--G  ,doc.risk_stage_dict_id
+--G  ,risk_stage_dict.code risk_stage_dict_code
+--G  ,risk_stage_dict.name risk_stage_dict_name
+--G  ,doc.scoring_value_ifrs
+--G  ,ci.ifrs_credit_stan_ni_id
+--G  ,ifrs_credit_stan_ni.code as ifrs_credit_stan_ni_code
+--G  ,ifrs_credit_stan_ni.name as ifrs_credit_stan_ni_name
+  ,ci.ifrs_days_overdue
+--G  ,doc.ifrs_pd_cd_id
+  ,ci.days_overdue
+  ,doc.ccf_lim_nbu_id
+  ,ccf_lim_nbu.code as ccf_lim_nbu_code
+  ,ccf_lim_nbu.name as ccf_lim_nbu_name
+  ,ccf_lim_nbu.value as ccf_lim_nbu_value
+  ,ccf_lim_nbu.pawn_group as ccf_lim_nbu_pawn_group
+  ,ci.f601_credit_type_id
+  ,f601_crt.code f601_credit_type_code
+  ,f601_crt.name f601_credit_type_name
+--G  ,doc.score_val_nbu_ctd
+  -- МСФО9
+/*G  ,ifrs9.business_model_id ifrs9_business_model_id
+  ,ifrs9_bmd.code ifrs9_business_model_code
+  ,ifrs9_bmd.name ifrs9_business_model_name
+  ,ifrs9.portf_id sppi_portf_id
+  ,sppi_portf.code sppi_portf_code
+  ,sppi_portf.name sppi_portf_name
+  ,ifrs9.sppi_dict_id
+  ,sppi_dict.code sppi_dict_code
+  ,sppi_dict.name sppi_dict_name*/
+  ,ifrs9.evaluat_method_id ifrs9_evaluat_method_id
+  ,ifrs9_emd.code ifrs9_evaluat_method_code
+  ,ifrs9_emd.name ifrs9_evaluat_method_name
+  ,ifrs9.deval_stages_id ifrs9_deval_stages_id
+  ,ifrs9_dsd.code ifrs9_deval_stages_code
+  ,ifrs9_dsd.name ifrs9_deval_stages_name
+--G  ,ifrs9.is_default_signs ifrs9_is_default_signs
+--G  ,decode(ifrs9.is_default_signs,'T','Да','F','Нет') ifrs9_is_default_signs_desc
+--G  ,ifrs9.is_grow_cred_risk ifrs9_is_grow_cred_risk
+--G  ,decode(ifrs9.is_grow_cred_risk,'T','Да','F','Нет') ifrs9_is_grow_cred_risk_desc
+  ,ifrs9.calc_method_id ifrs9_calc_method_id
+  ,ifrs9_calc_method.code ifrs9_calc_method_code
+  ,ifrs9_calc_method.name ifrs9_calc_method_name
+  ,ifrs9.prov_portf_id ifrs9_prov_portf_id
+  ,ifrs9_prov_portf.code ifrs9_prov_portf_code
+  ,ifrs9_prov_portf.name ifrs9_prov_portf_name
+  ,ifrs9_prov_portf.is_portf_basis ifrs9_prov_is_portf_basis
+ ,doc.interest_nbu_type_id
+ ,interest_nbu_type.code as interest_nbu_type_code
+ ,interest_nbu_type.name as interest_nbu_type_name
+ ,doc.interest_nbu_coefficient
+ ,doc.interest_nbu_offset
+ ,doc.interest_nbu_min
+ ,doc.interest_nbu_max
+ ,doc.interest_nbu_date
+ ,to_number(null) as interest_nbu_value
+ ,to_date(null) as interest_nbu_value_date
+ ,ci.type_percent_id
+ ,f048.code type_percent_code
+ ,f048.name type_percent_name
+-- Кредитный реестр
+ ,cred_insu.fs_cred_registry_id
+ ,fs_cred_registry.code as fs_cred_registry_code
+ ,fs_cred_registry.name as fs_cred_registry_name
+ ,cred_insu.fs_final_id
+ ,fs_final.code as fs_final_code
+ ,fs_final.name as fs_final_name
+/*G ,cred_insu.pd_rank_cr_id
+ ,pd_rank_cr.code as pd_rank_cr_code
+ ,pd_rank_cr.name as pd_rank_cr_name
+ ,pd_rank_cr.pd_value as pd_rank_cr_pd_value
+ ,cred_insu.pd_nbu_cr_id
+ ,pd_nbu_cr.code as pd_nbu_cr_code
+ ,pd_nbu_cr.name as pd_nbu_cr_name
+ ,pd_nbu_cr.pd_min as pd_nbu_cr_pd_min
+ ,pd_nbu_cr.pd_max as pd_nbu_cr_pd_max
+ ,pd_nbu_cr.pd_avg as pd_nbu_cr_pd_avg*/
+ ,cred_insu.pd_val_cr
+ ,cred_insu.pd_fo_val_cr
+,contr.general_id
+  ,doc.IS_DEVALUATED as IS_DEVALUATED
+,doc.DEVALUATION_DATE as DEVALUATION_DATE/*:FOOTER_SELECT*/
+from
+  SR_BANK.SR$CREDIT_DOCUMENT doc,
+  SR_BANK.SR$COMPOUND_DOCUMENT comp,
+  SR_BANK.SR$CONTRACT contr,
+  /*:ADD_FROM*/
+  SR_BANK.SR$COMPOUND_DOCUMENT_STATUS comp_status,
+  SR_BANK.SR$STATUS cust_status,
+  SR_BANK.SR$COMPOUND_STATUS_CATEGORY status_cat,
+  -- accounts
+  SR_BANK.SR$ACCOUNT rest_dir,
+  SR_BANK.SR$ACCOUNT int_dir,
+  SR_BANK.SR$CURRENCY currency,
+  SR_BANK.SR$CUSTOMER customer,
+  SR_BANK.SR$JUR_CUSTOMER jur,
+  SR_BANK.SR$CONTRACT_TYPE contr_type,
+  SR_BANK.SR$CREDIT_TYPE credit_type,
+--G  SR_BANK.SR$CREDIT_BILL cb,
+  SR_BANK.SR$CREDIT_INFO ci,
+--G  SR_BANK.SR$CREDIT_STAN csi,
+--G  SR_BANK.SR$CREDIT_BORG cbi,
+  SR_BANK.SR$BANK_BUSINES bb,
+--G  SR_BANK.SR$BILL b,
+  SR_BANK.SR$DIVISION division,
+  SR_BANK.SR$SR_USER sh,
+--G  SR_BANK.SR$KL_QL kl_ql,
+--G  SR_BANK.SR$QL_RANK ql_rank,
+--G  SR_BANK.SR$CREDIT_STAN_NI crs_ni,
+--G  SR_BANK.SR$CREDIT_BORG_NI crb_ni,
+--G  SR_BANK.SR$CUSTOMER_TYPE_NI customer_type_ni,
+  SR_BANK.SR$CUSTOMER_TYPE_NI final_cust_type_ni,
+--G  SR_BANK.SR$IAS_SIGNIFICANCE ias_significance,
+--G  SR_BANK.SR$IAS_POTRFOLIO ias_potrfolio,
+  SR_BANK.SR$IAS_POTRFOLIO nbu_ias_potrfolio,
+--G  SR_BANK.SR$LIP_DICT lip_dict,
+--G  SR_BANK.SR$PD_RANK pd_rank,
+--G  SR_BANK.SR$PD_NBU pd_nbu,
+  SR_BANK.SR$CCF_NBU ccf_nbu,
+--G  SR_BANK.SR$CREDIT_STAN_NI nbu_credit_stan_ni,
+  SR_BANK.SR$PAWN_CORR_NPL_DICT pawn_corr_npl_dict,
+  SR_BANK.SR$PAWN_CORR_NPL_DICT pawn_corr_npl_spr_dict,
+--G  SR_BANK.SR$CREDIT_STAN_NI ifrs_credit_stan_ni,
+--G  SR_BANK.SR$RISK_STAGE_DICT risk_stage_dict,
+  SR_BANK.SR$CCF_NBU ccf_lim_nbu,
+  SR_BANK.SR$F601_CREDIT_TYPE f601_crt,
+  -- МСФО9
+  SR_BANK.SR$CREDIT_IFRS9_DATA ifrs9,
+--G  SR_BANK.SR$BUSINESS_MODEL_DICT ifrs9_bmd,
+--G  SR_BANK.SR$IAS_POTRFOLIO sppi_portf,
+  SR_BANK.SR$EVALUAT_METHOD_DICT ifrs9_emd,
+  SR_BANK.SR$DEVAL_STAGES_DICT ifrs9_dsd,
+--G  SR_BANK.SR$SPPI_DICT sppi_dict,
+  SR_BANK.SR$IFRS9_CALC_METHOD ifrs9_calc_method,
+  SR_BANK.SR$IAS_POTRFOLIO ifrs9_prov_portf
+ ,SR_BANK.SR$INTEREST_NBU_TYPE interest_nbu_type
+ ,SR_BANK.SR$STAT_F048 f048
+ ,SR_BANK.SR$CREDIT_INSURANCE cred_insu
+ ,SR_BANK.SR$CREDIT_STAN_NI fs_cred_registry
+ ,SR_BANK.SR$CREDIT_STAN_NI fs_final
+--G ,SR_BANK.SR$PD_RANK pd_rank_cr
+--G ,SR_BANK.SR$PD_NBU pd_nbu_cr
+  /*:CONTR_TYPE_FROM*/
+  /*:CONTRACTMODE_FROM*/
+  /*:FOOTER_FROM*/
+where
+  doc.id = contr.id and
+  contr.id = comp.id and
+  /*:ADD_WHERE*/
+  comp.status = comp_status.sys_name and
+  comp_status.sys_name = cust_status.sys_name and
+  comp_status.status_category = status_cat.sys_name and
+  contr.currency_id = currency.id and
+  contr.customer_id = customer.id and
+  customer.id = jur.id(+) and
+  contr.type_id = contr_type.id and
+  contr_type.id = credit_type.id(+) and
+  contr.division_id = division.id and
+  contr_type.bank_busines_id = bb.id and
+  doc.id = ci.id(+) and
+--G  ci.credit_stan_id = csi.id(+) and
+--G  ci.credit_borg_id = cbi.id(+) and
+--G  doc.kl_ql_id = kl_ql.id(+) and
+--G  doc.ql_rank_id = ql_rank.id(+) and
+  doc.interest_nbu_type_id = interest_nbu_type.id(+) and
+
+  -- rest account
+  doc.account_rest_id = rest_dir.id(+) and
+  -- interest account
+  doc.account_int_id = int_dir.id(+) and
+--G  doc.id = cb.credit_id(+) and
+--G  cb.bill_id = b.id(+) and
+  contr.holder_id = sh.id and
+--G  ci.credit_stan_ni_id = crs_ni.id(+) and
+--G  ci.credit_borg_ni_id = crb_ni.id(+) and
+--G  doc.customer_type_ni_id = customer_type_ni.id(+) and
+  fs_final.customer_type_ni_id = final_cust_type_ni.id(+) and
+--G  doc.significance_flag = ias_significance.id(+) and
+--G  ci.portf_id = ias_potrfolio.id(+) and
+  ci.nbu_portf_id = nbu_ias_potrfolio.id(+) and
+--G  doc.lip_id = lip_dict.id(+) and
+--G  doc.pd_rank_id = pd_rank.id(+) and
+--G  doc.pd_nbu_id = pd_nbu.id(+) and
+  doc.ccf_nbu_id = ccf_nbu.id(+) and
+--G  ci.nbu_credit_stan_ni_id = nbu_credit_stan_ni.id(+) and
+  doc.pawn_corr_npl_dict_id = pawn_corr_npl_dict.id(+) and
+  cred_insu.pawn_corr_npl_dict_spr_id = pawn_corr_npl_spr_dict.id(+) and
+--G  ci.ifrs_credit_stan_ni_id = ifrs_credit_stan_ni.id(+) and
+--G  doc.risk_stage_dict_id = risk_stage_dict.id(+) and
+  doc.ccf_lim_nbu_id = ccf_lim_nbu.id(+) and
+  ci.f601_credit_type_id = f601_crt.id(+) and
+  ci.type_percent_id = f048.id(+) and
+  -- МСФО9
+  doc.id = ifrs9.id(+) and
+--G  ifrs9.business_model_id = ifrs9_bmd.id(+) and
+--G  ifrs9.portf_id = sppi_portf.id(+) and
+  ifrs9.evaluat_method_id = ifrs9_emd.id(+) and
+  ifrs9.deval_stages_id = ifrs9_dsd.id(+) and
+--G  ifrs9.sppi_dict_id = sppi_dict.id(+) and
+  ifrs9.calc_method_id = ifrs9_calc_method.id(+) and
+  ifrs9.prov_portf_id = ifrs9_prov_portf.id(+) and
+  doc.id = cred_insu.id(+) and
+  cred_insu.fs_cred_registry_id = fs_cred_registry.id(+) and
+  cred_insu.fs_final_id = fs_final.id(+) and
+--G  cred_insu.pd_rank_cr_id = pd_rank_cr.id(+) and
+--G  cred_insu.pd_nbu_cr_id = pd_nbu_cr.id(+) and
+
+  1=1/*:FOOTER_WHERE*/
+  /* END_REFRESH */ and
+
+  -- additional
+  -- master 3.0
+  (Null/*:MASTER_ID*/ is null or contr.parent_id = Null/*:MASTER_ID*/) and
+
+  -- type
+     Null/*:TYPE_ID*/ is null /*:CONTR_TYPE_CLAUSE*/ and
+
+  -- select type 3.0
+  (  ('OPEN'/*:SELECT_TYPE*/ in ('OPEN', 'ALL')
+     and contr.close_date is null
+     and to_date('18.05.2026', 'DD.MM.YYYY')/*:BANK_DATE*/ = to_date('18.05.2026', 'DD.MM.YYYY')/*:BANK_DATE*/
+     )
+     or
+     ('OPEN'/*:SELECT_TYPE*/ in ('CLOSED', 'ALL')
+      and contr.close_date is not null
+     )
+   ) and
+
+  Null/*:CUSTOMER_ID*/ is null/*:CUSTOMER_CLAUSE*/ and
+   contr.contract_type_id = 300 and contr.holder_id = 35719/*:GRD$CUR_USER_ID*//*:CONTRACTMODE_WHERE*/ and
+  (1=1)/*:CONTRACT_CLAUSE*/ and
+--   ((credit_type.id is null and :IS_FACTORING = 'F') or (nvl(credit_type.is_factoring, 'F') = :IS_FACTORING)) and
+
+  -- collection 3.0
+  (Null/*:COLLECTION_ID*/ is null or contr.collection_id = Null/*:COLLECTION_ID*/) and
+  0=0/*:ADDSQL*/ and
+--  (:CUSTOMER_ID is null or :TYPE_ID is null) and --Для теста
+  0=0/*:FILTER*/
+/*:ORDER_BY*/

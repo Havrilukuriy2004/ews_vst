@@ -1,0 +1,26 @@
+[project]
+name = "ews-group-financials"
+version = "0.10.5"
+description = "EWS group financials ETL, dashboard, and read-only DB connector package"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+db = [
+  "pyodbc>=5.1.0",
+  "oracledb>=2.4.0",
+  "python-dotenv>=1.0.1",
+]
+excel = [
+  "openpyxl>=3.1.0",
+]
+all = [
+  "pyodbc>=5.1.0",
+  "oracledb>=2.4.0",
+  "python-dotenv>=1.0.1",
+  "openpyxl>=3.1.0",
+]
+
+[tool.ews.internal_databases]
+clientprofile = "SQL Server via pyodbc + Microsoft ODBC Driver 17/18"
+oracle_ews = "Oracle via python-oracledb thin/thick mode"
