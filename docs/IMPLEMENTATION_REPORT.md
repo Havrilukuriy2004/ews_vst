@@ -56,6 +56,17 @@ CSV-шаблони містять synthetic demonstration values для пере
 
 Скрипт виконує end-to-end ETL, запускає unit tests та перевіряє наявність/валідність згенерованих CSV/JSON outputs. Для аудиту кожного запуску формується `output/run_manifest.json` з правилами консолідації, counts та validation statuses.
 
+
+## GUI / DB layer
+
+Додатково реалізовано:
+
+- `python/dashboard_app.py` — готовий stdlib web dashboard для KPI, company drill-down, validation і DB readiness.
+- `python/db_connectors.py` — read-only connector layer для ClientProfile SQL Server та Oracle EWS з mutation guards.
+- `scripts/run_dashboard.sh` — запуск графічного UI.
+- `scripts/check_db_connections.sh` — перевірка конфігурації та драйверів БД.
+- `docs/PRODUCTION_READINESS.md` — production checklist для приватного env, драйверів і запуску.
+
 ## Validation checklist
 
 - Unmatched EDRPOU by `matching_year + edrpou`.

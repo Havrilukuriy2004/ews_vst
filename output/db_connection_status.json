@@ -1,0 +1,55 @@
+{
+  "statuses": [
+    {
+      "name": "clientprofile_sql_server",
+      "configured": true,
+      "driver_available": false,
+      "ready": false,
+      "message": "pyodbc is not installed in this environment"
+    },
+    {
+      "name": "oracle_ews",
+      "configured": false,
+      "driver_available": false,
+      "ready": false,
+      "message": "ORACLE_DSN and ORACLE_USER are required"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "pyodbc",
+      "available": false,
+      "required_for": "ClientProfile SQL Server live extraction",
+      "install": "python -m pip install -r requirements-db.txt"
+    },
+    {
+      "name": "oracledb",
+      "available": false,
+      "required_for": "Oracle EWS live queries",
+      "install": "python -m pip install -r requirements-db.txt"
+    },
+    {
+      "name": "python-dotenv",
+      "available": false,
+      "required_for": "optional private .env loading",
+      "install": "python -m pip install -r requirements-db.txt"
+    }
+  ],
+  "config": {
+    "clientprofile_sql_server": {
+      "server": "clientprofile-db-sqls.bank.lan",
+      "database": "ClientProfile",
+      "driver": "ODBC Driver 17 for SQL Server",
+      "trusted_connection": "yes",
+      "user": "",
+      "password": "",
+      "encrypt": "yes",
+      "trust_server_certificate": "yes"
+    },
+    "oracle_ews": {
+      "dsn": "",
+      "user": "READ_ONLY_USER",
+      "password": ""
+    }
+  }
+}

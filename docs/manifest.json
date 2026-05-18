@@ -23,6 +23,21 @@
     "sql/03_group_aggregate_financials.sql",
     "sql/04_metric_views.sql",
     "sql/05_validation_checks.sql",
+    "vba/ProcessReports_GroupAggregation.bas",
+    "docs/PRODUCTION_READINESS.md",
+    "python/dashboard_app.py",
+    "python/db_connectors.py",
+    "scripts/run_dashboard.sh",
+    "scripts/check_db_connections.sh",
+    "docs/DB_DEPENDENCIES.md",
+    "requirements-db.txt",
+    "requirements-excel.txt",
+    "pyproject.toml",
+    "scripts/check_runtime_dependencies.py",
+    "output/runtime_dependencies.json",
+    "output/db_connection_status.json"
+  ]
+}
     "vba/ProcessReports_GroupAggregation.bas"
   ]
 }

@@ -63,3 +63,35 @@ python python/build_group_financials.py \
 ```
 
 Після запуску формується `output/run_manifest.json` з параметрами запуску, застосованими правилами, кількістю рядків і статусами validation checks.
+
+
+## Графічний dashboard і конектори до БД
+
+Реалізовано dependency-free web dashboard на Python stdlib:
+
+```bash
+./scripts/run_dashboard.sh
+```
+
+Після запуску UI доступний локально: `http://127.0.0.1:8765/dashboard`. Dashboard показує group KPIs, company drill-down, validation, audit counts і readiness DB connectors.
+
+Перевірка read-only конекторів до ClientProfile SQL Server та Oracle EWS:
+
+```bash
+./scripts/check_db_connections.sh
+```
+
+Конектори налаштовуються через приватний env-файл на базі `python/config.example.env`. У git зберігається тільки шаблон без секретів. Деталі production deployment описані в `docs/PRODUCTION_READINESS.md`.
+
+
+## Зовнішні залежності для внутрішніх БД
+
+Базовий CSV ETL і dashboard не потребують third-party packages. Для live read-only підключень до внутрішніх БД додані окремі dependency-файли:
+
+```bash
+python -m pip install -r requirements-db.txt      # SQL Server / Oracle connectors
+python -m pip install -r requirements-excel.txt   # optional XLSX support
+python scripts/check_runtime_dependencies.py      # перевірка встановлених модулів/утиліт
+```
+
+Production-залежності описані в `docs/DB_DEPENDENCIES.md`: `pyodbc` + Microsoft ODBC Driver для ClientProfile SQL Server, `oracledb` / Oracle Instant Client для Oracle EWS, і `python-dotenv` для приватних env-файлів.

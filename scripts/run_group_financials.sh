@@ -12,6 +12,10 @@ python python/build_group_financials.py \
   --output-dir output \
   --fail-on-check
 
+python scripts/check_runtime_dependencies.py | tee output/runtime_dependencies.json
+python python/db_connectors.py --env-file python/config.example.env --check | tee output/db_connection_status.json
+python python/dashboard_app.py --output-dir output --env-file python/config.example.env --check
+python python/dashboard_app.py --output-dir output --env-file python/config.example.env --export-html output/dashboard_snapshot.html
 python -m unittest discover -s tests -v
 python - <<'PY'
 from pathlib import Path

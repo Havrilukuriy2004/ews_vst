@@ -5,6 +5,11 @@ import tempfile
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from dashboard_app import DashboardData, render_dashboard, validate_dashboard_data  # noqa: E402
+from db_connectors import clientprofile_finrep_sql, is_sql_readonly, connector_statuses, optional_dependency_statuses  # noqa: E402
+from check_runtime_dependencies import dependency_report  # noqa: E402
 
 from build_group_financials import (  # noqa: E402
     aggregate_group_wide,
@@ -73,6 +78,35 @@ class GroupFinancialsTests(unittest.TestCase):
             self.assertTrue((out_dir / "run_manifest.json").exists())
             self.assertTrue((out_dir / "group_financials_wide.csv").exists())
             self.assertTrue((out_dir / "validation_report.csv").read_text(encoding="utf-8-sig").count("OK") >= 5)
+
+    def test_readonly_db_guards_and_dry_run_sql(self):
+        self.assertTrue(is_sql_readonly("SELECT * FROM finrep.v_CollectReport"))
+        self.assertTrue(is_sql_readonly("EXEC [finrep].[getReportFormInfo] @reportForm = 1"))
+        self.assertFalse(is_sql_readonly("UPDATE dbo.table SET x = 1"))
+        self.assertFalse(is_sql_readonly("EXEC SR_BANK.CREATE_DOC"))
+        sql = clientprofile_finrep_sql(1, 2025, 4, ["001", "002"])
+        self.assertIn("getReportFormInfo", sql)
+        self.assertIn("001,002", sql)
+
+    def test_dashboard_summary_and_html_render(self):
+        root = Path(__file__).resolve().parents[1]
+        data = DashboardData(root / "output", root / "python" / "config.example.env")
+        summary = validate_dashboard_data(data)
+        self.assertGreaterEqual(summary["counts"]["group_wide_rows"], 1)
+        html = render_dashboard(data)
+        self.assertIn("EWS Group Financials Dashboard", html)
+        self.assertIn("Database connections", html)
+        statuses = connector_statuses(root / "python" / "config.example.env")
+        self.assertEqual({status.name for status in statuses}, {"clientprofile_sql_server", "oracle_ews"})
+
+    def test_runtime_dependency_report_declares_db_packages(self):
+        deps = optional_dependency_statuses()
+        self.assertEqual({dep["name"] for dep in deps}, {"pyodbc", "oracledb", "python-dotenv"})
+        report = dependency_report()
+        names = {dep["name"] for dep in report["dependencies"]}
+        self.assertIn("pyodbc", names)
+        self.assertIn("oracledb", names)
+        self.assertIn("openpyxl", names)
 
 
 if __name__ == "__main__":

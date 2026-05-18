@@ -1,0 +1,50 @@
+{
+  "platform": "Linux-6.12.47-x86_64-with-glibc2.39",
+  "python": "3.12.13",
+  "dependencies": [
+    {
+      "name": "pyodbc",
+      "kind": "python",
+      "required_for": "ClientProfile SQL Server live extraction",
+      "available": false,
+      "install_hint": "python -m pip install -r requirements-db.txt"
+    },
+    {
+      "name": "oracledb",
+      "kind": "python",
+      "required_for": "Oracle EWS live queries",
+      "available": false,
+      "install_hint": "python -m pip install -r requirements-db.txt"
+    },
+    {
+      "name": "python-dotenv",
+      "kind": "python",
+      "required_for": "optional private .env loading",
+      "available": false,
+      "install_hint": "python -m pip install -r requirements-db.txt"
+    },
+    {
+      "name": "openpyxl",
+      "kind": "python",
+      "required_for": "optional XLSX import/export",
+      "available": true,
+      "install_hint": "python -m pip install -r requirements-excel.txt"
+    },
+    {
+      "name": "sqlcmd",
+      "kind": "system",
+      "required_for": "manual SQL Server diagnostics",
+      "available": false,
+      "install_hint": "install sqlcmd from the approved internal package mirror"
+    },
+    {
+      "name": "tnsping",
+      "kind": "system",
+      "required_for": "manual Oracle connectivity diagnostics",
+      "available": false,
+      "install_hint": "install Oracle Instant Client tools if thick-mode diagnostics are required"
+    }
+  ],
+  "db_ready": false,
+  "excel_ready": true
+}
