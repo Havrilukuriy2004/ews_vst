@@ -1,0 +1,6 @@
+﻿check_name,status,details
+Raw rows have matched group_id,OK,All included raw rows matched by matching_year+edrpou
+No duplicate company report keys,OK,No duplicate report keys
+Assets balance equation,OK,Line 1300 equals line 1900 within +/-1
+Group rows created,OK,Group rows: 96
+Dashboard metrics not blank,OK,"Revenue, EBITDA, assets and equity available"

@@ -1,0 +1,38 @@
+metric_name,domain,formula_logic,comment
+Sales growth %,P&L,(F2.2000 / F2.2000 previous period) - 1,Формула з правила трансформації: ф.2 р.2000 / ф.2 р.2000 (АПМР) - 1
+Revenue,P&L,F2.2000,Чистий обсяг продажів
+Gross profit,P&L,F2.2090 - F2.2095,Валовий прибуток мінус валовий збиток
+EBIT rolling,P&L,F2.2190 - F2.2195,Операційний прибуток/збиток
+EBITDA rolling,P&L,EBIT rolling + F2.2515,EBIT + амортизація
+NIE / Financial expense,P&L,F2.2250 - F2.2220,Фінансові витрати мінус фінансові доходи
+Income tax expense,P&L,F2.2300,Податок на прибуток
+Depreciation,P&L,F2.2515,Амортизація
+Net income,P&L,F2.2350 - F2.2355,Чистий прибуток мінус збиток
+Cash,Balance,F1.1165,Гроші та еквіваленти
+Accounts receivable,Balance,F1.1120 + F1.1125,Дебіторська заборгованість
+Advances paid,Balance,F1.1130,Аванси видані
+Inventory,Balance,F1.1100 + F1.1110,Запаси
+Other current assets,Balance,F1.1115+1135+1140+1145+1155+1160+1170+1180+1190,Інші поточні активи
+Current assets,Balance,F1.1195,Усього оборотних активів
+Non-current assets,Balance,F1.1000+1005+1010+1015+1020+1040+1045+1050+1060+1065+1090+1200,Необоротні активи
+Total assets,Balance,F1.1300,Усього активів
+Accounts payable,Balance,F1.1605 + F1.1615,Кредиторська заборгованість
+Advances received,Balance,F1.1635,Аванси одержані
+Other current liabilities,Balance,F1.1620+1625+1630+1640+1645+1650+1660+1665+1670+1690+1700,Інші поточні зобов'язання
+Current liabilities,Balance,F1.1695,Усього поточних зобов'язань
+Short-term bank debt,Balance,F1.1600 + F1.1610,Короткострокові кредити банків та поточна частина
+Long-term bank debt,Balance,F1.1510,Довгострокові кредити банків
+Other interest-bearing liabilities,Balance,F1.1515,Інші довгострокові відсоткові зобов'язання
+Total interest-bearing debt,Balance,F1.1510+1515+1600+1610,Усього відсоткових боргів
+Equity,Balance,F1.1495,Власний капітал
+Equity ratio,Ratio,F1.1495 / F1.1300,Коефіцієнт автономії
+Net working capital,Ratio,F1.1195 + F1.1200 - F1.1695 - F1.1700 + F1.1600 + F1.1610,Чистий оборотний капітал
+Current ratio,Ratio,F1.1195 / F1.1695,Ліквідність загальна
+Net Debt / EBITDA,Ratio,(F1.1510+1515+1600+1610 - F1.1165) / EBITDA rolling,Боргове навантаження
+EBITDA / NIE,Ratio,EBITDA rolling / NIE,Покриття фінансових витрат EBITDA
+ICR,Ratio,EBIT rolling / NIE,Покриття фінансових витрат EBIT
+DSO,Ratio,Avg(F1.1120+1125+1130+1140) * days / (F2.2000 * 1.2),Оборотність дебіторської заборгованості
+DIO,Ratio,Avg(F1.1100+1110) * days / (F2.2050 - F2.2515),Оборотність запасів
+DPO,Ratio,Avg(F1.1605+1615+1635+1690) * days / ((F2.2050 - F2.2515) * 1.2),Оборотність кредиторської заборгованості
+Financial cycle,Ratio,DSO + DIO - DPO,Фінансовий цикл
+Average capital need,Ratio,F2.2050 * Financial cycle / days,Середня потреба у капіталі

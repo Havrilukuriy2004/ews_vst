@@ -1,0 +1,60 @@
+{
+  "generated_at_utc": "2026-05-18T12:54:13Z",
+  "input_excel": null,
+  "output_excel": null,
+  "demo_values": false,
+  "rules": {
+    "edrpou_type": "string",
+    "matching_key": [
+      "matching_year",
+      "edrpou"
+    ],
+    "inclusion_filter": "inclusion_flag=1",
+    "financial_line_aggregation": "SUM",
+    "staff_aggregation": "SUM",
+    "kved_rule": "is_main_company=1 else highest revenue",
+    "metadata_rule": "ETL metadata"
+  },
+  "counts": {
+    "company_wide_rows": 96,
+    "company_long_rows": 13824,
+    "group_wide_rows": 96,
+    "group_long_rows": 13824,
+    "indicator_rows": 192,
+    "validation_checks": 5
+  },
+  "validation": [
+    {
+      "check_name": "Raw rows have matched group_id",
+      "status": "OK",
+      "details": "All included raw rows matched by matching_year+edrpou"
+    },
+    {
+      "check_name": "No duplicate company report keys",
+      "status": "OK",
+      "details": "No duplicate report keys"
+    },
+    {
+      "check_name": "Assets balance equation",
+      "status": "OK",
+      "details": "Line 1300 equals line 1900 within +/-1"
+    },
+    {
+      "check_name": "Group rows created",
+      "status": "OK",
+      "details": "Group rows: 96"
+    },
+    {
+      "check_name": "Dashboard metrics not blank",
+      "status": "OK",
+      "details": "Revenue, EBITDA, assets and equity available"
+    }
+  ],
+  "outputs": {
+    "company_financials_long": "output/company_financials_long.csv",
+    "group_financials_long": "output/group_financials_long.csv",
+    "group_financials_wide": "output/group_financials_wide.csv",
+    "financial_indicators": "output/financial_indicators.csv",
+    "validation_report": "output/validation_report.csv"
+  }
+}
