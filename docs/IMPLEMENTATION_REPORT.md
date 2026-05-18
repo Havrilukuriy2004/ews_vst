@@ -57,7 +57,6 @@ CSV-шаблони містять synthetic demonstration values для пере
 Скрипт виконує end-to-end ETL, запускає unit tests та перевіряє наявність/валідність згенерованих CSV/JSON outputs. Для аудиту кожного запуску формується `output/run_manifest.json` з правилами консолідації, counts та validation statuses.
 
 
-
 ## GUI / DB layer
 
 Додатково реалізовано:

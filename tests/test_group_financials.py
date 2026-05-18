@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from dashboard_app import DashboardData, render_dashboard, validate_dashboard_data  # noqa: E402
 from db_connectors import clientprofile_finrep_sql, is_sql_readonly, connector_statuses, optional_dependency_statuses  # noqa: E402
 from check_runtime_dependencies import dependency_report  # noqa: E402
+
 from build_group_financials import (  # noqa: E402
     aggregate_group_wide,
     build_from_csv_args,
